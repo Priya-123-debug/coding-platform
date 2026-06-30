@@ -31,7 +31,7 @@ const submitcode = async (req, res) => {
       testCasetotal: problemindatabase.hiddenTestCases.length,
     });
       console.log("hiddenTestCases count:", problemindatabase.hiddenTestCases.length);
-console.log("first result:", results[0]);
+
 
     const languageid = getLanguageId(language);
 

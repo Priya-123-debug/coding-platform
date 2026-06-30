@@ -9,13 +9,10 @@ const cookieparser = require("cookie-parser");
 const authRouter = require("./routes/userauth");
 const problemrouter = require("./routes/problemcreate");
 const submitrouter = require("./routes/submit");
+const commentRouter = require("./routes/comment");
+const analyticsRouter=require("./routes/analytics");
 const cors = require("cors");
-// app.use(
-//   cors({
-//     origin: "https://codingplatformservice-2lb7-hiubn40tr-supriya-kumaris-projects.vercel.app",
-//     credentials: true,
-//   })
-// );
+
 const allowedOrigins = [
   "http://localhost:5173",
   "https://codingplatformservice-2lb7-hiubn40tr-supriya-kumaris-projects.vercel.app",
@@ -37,32 +34,16 @@ app.use(
   })
 );
 
-// const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
 
-
-// app.use(
-//   cors({
-//     origin: function (origin, callback) {
-//       // allow requests with no origin (like curl or Postman)
-//       if (!origin) return callback(null, true);
-
-//       // check if the origin is allowed
-//       if (!allowedOrigins.includes(origin)) {
-//         return callback(new Error("CORS policy violation"), false);
-//       }
-
-//       return callback(null, true);
-//     },
-//     credentials: true,
-//   })
-// );
 
 
 app.use(express.json());
 app.use(cookieparser());
+app.use("/comment", commentRouter);
 app.use("/user", authRouter);
 app.use("/problem", problemrouter);
 app.use("/submission", submitrouter);
+app.use("/analytics", analyticsRouter);
 const main = require("./utilis/db");
 
 /// cookie come in json format

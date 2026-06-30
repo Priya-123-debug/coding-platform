@@ -54,6 +54,7 @@ const register = async (req, res) => {
       secure: true, // required for sameSite: none
     });
 
+    
     res.status(201).json({
       user: reply,
       message: "user registered successfully",
