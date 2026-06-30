@@ -1,156 +1,125 @@
-
-
-import React from "react";
+import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../store/authSlice";
-import { User } from "lucide-react";
+import { User, LogOut, BarChart2, ChevronDown } from "lucide-react";
 
 const Navbar = ({ filter, setfilter, isUser }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  // 🔹 Get logged-in user from Redux
   const { user } = useSelector((state) => state.auth);
+  const [open, setOpen] = useState(false);
 
-  // 🔹 Logout handler
   const handleLogout = () => {
     dispatch(logoutUser());
-
-    // redirect after logout (optional but recommended)
+    setOpen(false);
     navigate("/login");
   };
 
   return (
     <>
-      {/* ================= NAVBAR ================= */}
-      <nav className="navbar bg-base-100 shadow-lg px-4">
+      {/* TOP BAR */}
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: "rgba(13,17,23,0.92)", backdropFilter: "blur(12px)",
+        borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 1.25rem", height: "58px",
+      }}>
+        <NavLink to="/" style={{ textDecoration: "none", fontWeight: 700, fontSize: "1.05rem", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+          <span style={{ color: "var(--accent)" }}>&lt;</span>Code<span style={{ color: "var(--accent)" }}>/&gt;</span>
+        </NavLink>
 
-        {/* 🔹 Left: Logo */}
-        <div className="flex-1">
-          <NavLink to="/" className="btn btn-ghost text-xl">
-            Leetcode
-          </NavLink>
-        </div>
-
-        {/* 🔹 Right: Profile Dropdown */}
-        <div className="dropdown dropdown-end">
-
-          {/* ========== Trigger (Icon + Name) ========== */}
-          <div
-            tabIndex={0}
-            role="button"
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            {/* Avatar Icon */}
-            <div
-              className="w-10 h-10 rounded-full bg-gray-200
-                         flex items-center justify-center
-                         hover:bg-gray-300 transition"
-            >
-              <User className="w-5 h-5 text-gray-700" />
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setOpen(p => !p)} style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: "8px", padding: "0.4rem 0.75rem",
+            cursor: "pointer", color: "var(--text-primary)",
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.75rem", fontWeight: 700, color: "#fff",
+            }}>
+              {(user?.firstname?.[0] || user?.email?.[0] || "U").toUpperCase()}
             </div>
+            <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{user?.firstname || "User"}</span>
+            <ChevronDown size={14} color="var(--text-secondary)" />
+          </button>
 
-           
-            {/* <span className="font-medium hidden sm:block">
-              {user?.firstname || user?.email || "User"}
-            </span> */}
-          </div>
-
-          {/* ========== Dropdown Menu ========== */}
-          <ul
-            tabIndex={0}
-            className="mt-3 p-2 shadow menu menu-sm
-                       dropdown-content bg-base-100
-                       rounded-box w-56 z-[100]"
-          >
-            {/* ----- User Info Header ----- */}
-            <li className="px-4 py-2 border-b cursor-default">
-              <p className="font-semibold text-xl">
-                {user?.firstname || "User"}
-              </p>
-              <p className=" text-gray-500 break-all text-[16px]">
-                {user?.email}
-              </p>
-            </li>
-
-            {/* ----- Menu Options ----- */}
-            <li>
-              <button onClick={() => navigate("/profile")} className="text-[16px]">
-                Profile
-              </button>
-            </li>
-
-            <li>
-              <button onClick={() => navigate("/submissions")} className="text-[16px]">
-                My Submissions
-              </button>
-            </li>
-
-            <li>
-              <button
-                onClick={handleLogout}
-                className="text-red-500 text-[20px]"
-              >
-                Logout
-              </button>
-            </li>
-          </ul>
+          {open && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
+              <div style={{
+                position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50,
+                background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "10px",
+                minWidth: "200px", padding: "0.5rem", boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              }}>
+                <div style={{ padding: "0.5rem 0.75rem 0.75rem", borderBottom: "1px solid var(--border)", marginBottom: "0.25rem" }}>
+                  <p style={{ fontWeight: 600, fontSize: "0.9rem", margin: 0 }}>{user?.firstname || "User"}</p>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", margin: "2px 0 0", wordBreak: "break-all" }}>{user?.email}</p>
+                </div>
+                {[
+                  { label: "Profile", icon: <User size={14} />, path: "/profile" },
+                  { label: "Submissions", icon: <BarChart2 size={14} />, path: "/submissions" },
+                ].map(item => (
+                  <button key={item.label} onClick={() => { navigate(item.path); setOpen(false); }} style={{
+                    width: "100%", background: "none", border: "none", textAlign: "left",
+                    padding: "0.5rem 0.75rem", borderRadius: "6px", cursor: "pointer",
+                    color: "var(--text-primary)", fontSize: "0.85rem",
+                    display: "flex", alignItems: "center", gap: "0.5rem",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    {item.icon} {item.label}
+                  </button>
+                ))}
+                <button onClick={handleLogout} style={{
+                  width: "100%", background: "none", border: "none", textAlign: "left",
+                  padding: "0.5rem 0.75rem", borderRadius: "6px", cursor: "pointer",
+                  color: "var(--red)", fontSize: "0.85rem",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  marginTop: "0.25rem", borderTop: "1px solid var(--border)",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(248,81,73,0.08)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}
+                >
+                  <LogOut size={14} /> Log out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </nav>
 
-      {/* ================= FILTER BAR ================= */}
-      {/* Visible only for normal users */}
-
+      {/* FILTER BAR */}
       {isUser && user?.role !== "admin" && filter && setfilter && (
-        <div className="flex gap-4 mb-4 pt-4 px-4 bg-base-100 shadow">
+        <div style={{
+          background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)",
+          padding: "0.65rem 1.25rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", fontWeight: 500 }}>Filter:</span>
 
-          {/* Status Filter */}
-          <select
-            className="select select-bordered"
-            value={filter.status}
-            onChange={(e) =>
-              setfilter({ ...filter, status: e.target.value })
-            }
-          >
-            <option value="all">All problems</option>
-            <option value="solved">Solved Problems</option>
-          </select>
+          {[
+            { key: "status", options: [["all","All Problems"],["solved","Solved"]] },
+            { key: "difficulty", options: [["all","All Difficulties"],["easy","Easy"],["medium","Medium"],["hard","Hard"]] },
+            { key: "tag", options: [["all","All Tags"],["array","Array"],["LinkedList","Linked List"],["graph","Graph"],["dp","DP"]] },
+          ].map(({ key, options }) => (
+            <select key={key} value={filter[key]} onChange={e => setfilter({ ...filter, [key]: e.target.value })}
+              style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: "6px", padding: "0.35rem 0.75rem", fontSize: "0.82rem", cursor: "pointer", outline: "none" }}>
+              {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          ))}
 
-          {/* Difficulty Filter */}
-          <select
-            className="select select-bordered"
-            value={filter.difficulty}
-            onChange={(e) =>
-              setfilter({
-                ...filter,
-                difficulty: e.target.value,
-              })
-            }
-          >
-            <option value="all">All Difficulties</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-
-          {/* Tag Filter */}
-          <select
-            className="select select-bordered"
-            value={filter.tag}
-            onChange={(e) =>
-              setfilter({
-                ...filter,
-                tag: e.target.value,
-              })
-            }
-          >
-            <option value="all">All Tags</option>
-            <option value="array">Array</option>
-            <option value="LinkedList">Linked List</option>
-            <option value="graph">Graph</option>
-            <option value="dp">DP</option>
-          </select>
+          {(filter.difficulty !== "all" || filter.tag !== "all" || filter.status !== "all") && (
+            <button onClick={() => setfilter({ difficulty: "all", tag: "all", status: "all" })}
+              style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.78rem", cursor: "pointer", textDecoration: "underline" }}>
+              Clear
+            </button>
+          )}
         </div>
       )}
     </>
@@ -158,4 +127,3 @@ const Navbar = ({ filter, setfilter, isUser }) => {
 };
 
 export default Navbar;
-

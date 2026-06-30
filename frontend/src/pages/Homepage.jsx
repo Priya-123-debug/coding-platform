@@ -1,158 +1,136 @@
-import React from "react";
-import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { NavLink } from "react-router";
-import axiosClient from "../utilis/axiosClient";
-import { logoutUser } from "../store/authSlice";
-import { useEffect } from "react";
-import Navbar from "./Navbar";
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-// import { set } from 'zod/v3';
+import axiosClient from "../utilis/axiosClient";
+import Navbar from "./Navbar";
+import { CheckCircle, Circle, Search } from "lucide-react";
+
+const tagColors = {
+  array:      { bg: "rgba(121,192,255,0.15)", color: "#79c0ff" },
+  linkedlist: { bg: "rgba(188,140,255,0.15)", color: "#bc8cff" },
+  graph:      { bg: "rgba(247,129,102,0.15)", color: "#f78166" },
+  dp:         { bg: "rgba(126,231,135,0.15)", color: "#7ee787" },
+};
+
+const diffMap = {
+  easy:   { cls: "badge-easy",   label: "Easy" },
+  medium: { cls: "badge-medium", label: "Medium" },
+  hard:   { cls: "badge-hard",   label: "Hard" },
+};
 
 const Homepage = () => {
-  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const [problems, setproblems] = useState([]);
-  const [solvedproblem, setsolvedproblem] = useState([]);
-
-  const [filter, setfilter] = useState({
-    difficulty: "all",
-    tag: "all",
-    status: "all",
-  });
-  const tagColors = {
-    array: "bg-blue-500 text-white",
-    linkedlist: "bg-indigo-500 text-white",
-    graph: "bg-orange-500 text-white",
-    dp: "bg-purple-500 text-white",
-  };
+  const [problems, setProblems] = useState([]);
+  const [solved, setSolved] = useState([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState({ difficulty: "all", tag: "all", status: "all" });
 
   useEffect(() => {
-    const fetchproblems = async () => {
-      try {
-        const { data } = await axiosClient.get("/problem/getallproblem");
-       
-        setproblems(data);
-      } catch (err) {
-        console.log("error fetching problem:", err);
-      }
-    };
-    const fetchSolvedproblem = async () => {
-      try {
-        const { data } = await axiosClient.get("/problem/problemsolvedbyuser");
- console.log("Solved Problems:", data); 
-      setsolvedproblem(data.user.problemsolved);
-
-      } catch (err) {
-        console.log("error fetching solved problems:", err);
-      }
-    };
-    fetchproblems();
-    if (user) fetchSolvedproblem();
+    axiosClient.get("/problem/getallproblem").then(r => setProblems(r.data)).catch(console.error);
+    if (user) axiosClient.get("/problem/problemsolvedbyuser").then(r => setSolved(r.data.user.problemsolved)).catch(console.error);
   }, [user]);
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    setsolvedproblem([]); // clear solved problem on logout
-  };
-  let statusMatch = false;
-  const filteredproblems = problems.filter((problem) => {
-    const difficultyMatch =
-      filter.difficulty === "all" || problem.difficulty === filter.difficulty;
-    const tagMatch = filter.tag === "all" || problem.tags === filter.tag;
-    statusMatch =
-      filter.status === "all" ||
-      solvedproblem.some((sp) => sp._id === problem._id);
-    return difficultyMatch && tagMatch && statusMatch;
+
+  const filteredProblems = problems.filter(p => {
+    const isSolved = Array.isArray(solved) && solved.some(sp => sp._id === p._id);
+    return (
+      (filter.difficulty === "all" || p.difficulty === filter.difficulty) &&
+      (filter.tag === "all" || (Array.isArray(p.tags) ? p.tags.includes(filter.tag) : p.tags === filter.tag)) &&
+      (filter.status === "all" || (filter.status === "solved" && isSolved)) &&
+      (!search || p.title?.toLowerCase().includes(search.toLowerCase()))
+    );
   });
+
+  const totalSolved = Array.isArray(solved) ? solved.length : 0;
+  const pct = problems.length ? Math.round((totalSolved / problems.length) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-base-200">
-      {/* hiiiii  supriya */}
-      <Navbar
-        filter={filter}
-        setfilter={setfilter}
-        isUser={user?.role === "user"}
-      ></Navbar>
-      {/* main container */}
-      <div className="container mx-auto pt-6 pl-8 gap-4 flex flex-col">
-        {/* <div className='flex gap-8 mb-4 pt-4'>
+    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+      <Navbar filter={filter} setfilter={setFilter} isUser={user?.role === "user"} />
 
+      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "1.75rem 1rem 3rem" }}>
 
+        {/* Stats */}
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+          {[
+            { label: "Solved", value: `${totalSolved} / ${problems.length}`, color: "var(--green)" },
+            { label: "Completion", value: `${pct}%`, color: "var(--accent-2)" },
+          ].map(s => (
+            <div key={s.label} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "10px", padding: "1rem 1.5rem", flex: "1 1 160px" }}>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", margin: 0, fontWeight: 500 }}>{s.label}</p>
+              <p style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.25rem 0 0", color: s.color }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
 
-        {/* problem display section */}
-        <div className="grid grid-cols-1 gap-4 ">
-          {user?.role === "user"
-            ? filteredproblems.map((problem) => {
-                const diff = problem.difficulty?.trim().toLowerCase();
-                // const issolved=solvedproblem.some((sp)=>sp._id===problem._id);
-                const issolved =
-                  Array.isArray(solvedproblem) &&
-                  solvedproblem.some((sp) => sp._id === problem._id);
+        {/* Search */}
+        <div style={{ position: "relative", marginBottom: "1.25rem" }}>
+          <Search size={15} color="var(--text-secondary)" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)" }} />
+          <input type="text" placeholder="Search problems..." value={search} onChange={e => setSearch(e.target.value)}
+            style={{ width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.6rem 1rem 0.6rem 2.4rem", color: "var(--text-primary)", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }}
+            onFocus={e => e.target.style.borderColor = "var(--accent-2)"}
+            onBlur={e => e.target.style.borderColor = "var(--border)"}
+          />
+        </div>
 
-                return (
-                  <div
-                    key={problem._id}
-                    className="bg-[#2a2a2a] border border-gray-700 rounded-xl shadow-sm p-4 w-250 flex flex-col md:flex-row justify-between items-start hover:bg-[#333333] hover:shadow-md transition  "
-                  >
-                    <div className="flex flex-col">
-                      {/* <h2 className='text-xl font-semibold mb-2'>{problem.title}</h2> */}
-                      <Link
-                        to={`/problem/${problem._id}`}
-                        className="text-xl font-semibold mb-2 cursor-pointer"
-                      >
-                        {problem.title}
-                      </Link>
+        {/* Table header */}
+        <div style={{ display: "grid", gridTemplateColumns: "2rem 1fr 7rem 8rem 2.5rem", gap: "0.5rem", padding: "0.4rem 1rem", color: "var(--text-secondary)", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          <span>#</span><span>Title</span><span>Difficulty</span><span>Tags</span><span></span>
+        </div>
 
-                      <div className="flex  w-1/4">
-                        {/* <span className="text-sm font-semibold mb-1">Difficulty</span> */}
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium
-      ${
-        diff === "easy"
-          ? "bg-green-100 text-green-700"
-          : diff === "medium"
-          ? "bg-yellow-100 text-yellow-700"
-          : diff === "hard"
-          ? "bg-red-100 text-red-700"
-          : "bg-gray-200 text-gray-700"
-      }`}
-                        >
-                          {problem.difficulty}
-                        </span>
-                      </div>
-                    </div>
+        {/* Rows */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {filteredProblems.length === 0 && (
+            <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "10px" }}>
+              No problems match your filters.
+            </div>
+          )}
+          {filteredProblems.map((p, idx) => {
+            const diff = p.difficulty?.trim().toLowerCase();
+            const dc = diffMap[diff];
+            const isSolved = Array.isArray(solved) && solved.some(sp => sp._id === p._id);
+            const tags = Array.isArray(p.tags) ? p.tags : [p.tags].filter(Boolean);
 
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <div className="flex gap-4 pl-8 ml-4  items-center justify-center ">
-                        {problem.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className={`   px-2 py-1 rounded-full text-xs font-semibold font-lg  flex  items-center justify-center ${
-                              tagColors[tag.toLowerCase()] ||
-                              "bg-gray-500 text-white"
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+            return (
+              <div key={p._id} style={{
+                display: "grid", gridTemplateColumns: "2rem 1fr 7rem 8rem 2.5rem",
+                gap: "0.5rem", alignItems: "center",
+                background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.85rem 1rem",
+                transition: "border-color 0.15s, background 0.15s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.borderColor = "#484f58"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+              >
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.78rem" }}>{idx + 1}</span>
 
-                    <p className="text-sm mb-4">
-                      {/* Status:{""} */}
-                      {issolved ? (
-                        <span className="text-yellow-600 font-semibold">
-                          Solved ✅
-                        </span>
-                      ) : (
-                        <span className="text-green-600 font-semibold">
-                          Unsolved{" "}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                );
-              })
-            : null}
+                <Link to={`/problem/${p._id}`} style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500, fontSize: "0.9rem" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "var(--accent-2)"}
+                  onMouseLeave={e => e.currentTarget.style.color = "var(--text-primary)"}
+                >
+                  {p.title}
+                </Link>
+
+                <span>
+                  {dc
+                    ? <span className={`badge ${dc.cls}`}>{dc.label}</span>
+                    : <span className="badge" style={{ background: "var(--bg-hover)", color: "var(--text-secondary)" }}>{p.difficulty}</span>
+                  }
+                </span>
+
+                <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                  {tags.slice(0, 2).map(tag => {
+                    const tc = tagColors[tag?.toLowerCase()] || { bg: "rgba(255,255,255,0.08)", color: "var(--text-secondary)" };
+                    return (
+                      <span key={tag} style={{ background: tc.bg, color: tc.color, borderRadius: "12px", padding: "0.15rem 0.5rem", fontSize: "0.68rem", fontWeight: 600 }}>{tag}</span>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  {isSolved ? <CheckCircle size={16} color="var(--green)" /> : <Circle size={16} color="var(--border)" />}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ const {
 } = require("../utilis/Problemutility");
 
 const submitcode = async (req, res) => {
+
   try {
     const userid = req.result._id;
     const problemid = req.params.id;
@@ -29,6 +30,8 @@ const submitcode = async (req, res) => {
       status: "pending",
       testCasetotal: problemindatabase.hiddenTestCases.length,
     });
+      console.log("hiddenTestCases count:", problemindatabase.hiddenTestCases.length);
+console.log("first result:", results[0]);
 
     const languageid = getLanguageId(language);
 
@@ -108,44 +111,6 @@ const submitcode = async (req, res) => {
   }
 };
 
-// const runcode = async (req, res) => {
-//   try {
-//     const userid = req.result._id;
-//     const problemid = req.params.id;
-//     const { code, language } = req.body;
-
-//     if (!userid || !problemid || !code || !language) {
-//       return res.status(400).send("Missing required fields");
-//     }
-
-//     const problemindatabase = await problem.findById(problemid);
-//     if (!problemindatabase) {
-//       return res.status(404).send("Problem not found");
-//     }
-
-//     const languageid = getLanguageId(language);
-
-//     const encode = (str) =>
-//       Buffer.from(str || "", "utf-8").toString("base64");
-
-//     const submissions = problemindatabase.visibleTestCases.map((testcase) => ({
-//       source_code: encode(code),          // ✅ user full code
-//       language_id: languageid,
-//       stdin: encode(testcase.input),       // ✅ testcase input
-//       expected_output: encode(testcase.output),
-//     }));
-
-//     const submitresult = await submitBatch(submissions, true);
-//     const tokens = submitresult.map((r) => r.token);
-
-//     const results = await submitToken(tokens);
-
-//     res.status(200).send(results);
-//   } catch (err) {
-//     console.error("❌ Run Code Error:", err.response?.data || err.message);
-//     res.status(500).send("Internal server error");
-//   }
-// };
 
 const runcode = async (req, res) => {
   try {

@@ -7,6 +7,8 @@ import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
 import Mainpage from "./pages/Mainpage";
 import CodeEditor from "./pages/CodeEditor";
+import Profile from "./pages/Profile";
+import Submissions from "./pages/Submissions";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminProblemList from "./pages/admin/AdminProblemList";
@@ -54,24 +56,27 @@ function App() {
         }
       />
 
-     
       <Route
         path="/login"
-        element={
-          isAuthenticated ? <Navigate to="/" /> : <Login />
-        }
+        element={isAuthenticated ? <Navigate to="/" /> : <Login />}
       />
       <Route
         path="/signup"
-        element={
-          isAuthenticated ? <Navigate to="/" /> : <Signup />
-        }
+        element={isAuthenticated ? <Navigate to="/" /> : <Signup />}
       />
 
-     
       <Route path="/problem/:id" element={<CodeEditor />} />
 
-     
+      {/* 👤 Profile & Submissions */}
+      <Route
+        path="/profile"
+        element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/submissions"
+        element={isAuthenticated ? <Submissions /> : <Navigate to="/login" />}
+      />
+
       <Route
         path="/admin/*"
         element={
@@ -85,7 +90,6 @@ function App() {
         <Route path="edit/:id" element={<Editpages />} />
       </Route>
 
-    
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

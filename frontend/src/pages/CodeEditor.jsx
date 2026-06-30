@@ -1,402 +1,194 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import axiosClient from "../utilis/axiosClient";
 import Editor from "@monaco-editor/react";
+import { Play, Upload, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+
+const templates = {
+  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
+  python: `def solve():\n    # Write your code here\n    pass\n\nif __name__ == "__main__":\n    solve()`,
+  javascript: `function solve() {\n    // Write your code here\n}\n\nsolve();`,
+  java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
+};
 
 const CodeEditor = () => {
-  const templates = {
-    cpp: `#include <bits/stdc++.h>
-using namespace std;
-
-int main() {
-    // Write your code here
-    return 0;
-}`,
-    python: `def solve():
-    # Write your code here
-    pass
-
-if __name__ == "__main__":
-    solve()`,
-    javascript: `function solve() {
-    // Write your code here
-}
-
-solve();`,
-    java: `import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        // Write your code here
-    }
-}`,
-  };
-
   const { id } = useParams();
-
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState("");
-  const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTagsOpen, setIsTagsOpen] = useState(false);
   const [selectedTestIndex, setSelectedTestIndex] = useState(0);
-
-  // ✅ NEW STATES
   const [verdict, setVerdict] = useState("");
   const [testResult, setTestResult] = useState([]);
+  const [outputMsg, setOutputMsg] = useState("");
 
-  // Reset selected tab when new results arrive
+  useEffect(() => { setSelectedTestIndex(0); }, [testResult.length]);
+
   useEffect(() => {
-    setSelectedTestIndex(0);
-  }, [testResult.length]);
-
-  /* ---------------- Fetch Problem ---------------- */
-  useEffect(() => {
-    const fetchProblem = async () => {
-      try {
-        const res = await axiosClient.get(`/problem/problembyid/${id}`);
-        setProblem(res.data);
-      } catch (err) {
-        console.error("Error fetching problem:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProblem();
+    axiosClient.get(`/problem/problembyid/${id}`)
+      .then(r => setProblem(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
-  /* ---------------- Get Start Code ---------------- */
-  const getStartCodeForLanguage = (lang) => {
+  const getStartCode = lang => {
     if (!problem?.startcode?.length) return templates[lang];
-
-    const codeObj = problem.startcode.find(
-      (s) => s.language.toLowerCase() === lang.toLowerCase()
-    );
-
-    const rawCode = codeObj?.initialcode || templates[lang];
-    return rawCode.replace(/\\n/g, "\n");
+    const obj = problem.startcode.find(s => s.language.toLowerCase() === lang.toLowerCase());
+    return (obj?.initialcode || templates[lang]).replace(/\\n/g, "\n");
   };
 
-  /* ---------------- Sync Code with Language ---------------- */
-  useEffect(() => {
-    if (problem) {
-      setCode(getStartCodeForLanguage(language));
-    }
-  }, [problem, language]);
+  useEffect(() => { if (problem) setCode(getStartCode(language)); }, [problem, language]);
 
-  /* ---------------- Run Code ---------------- */
-  const handleRunCode = async () => {
+  const handleRun = async () => {
     try {
-      setIsRunning(true);
-      setOutput("Running...");
-      setVerdict("");
-      setTestResult([]);
-      // console.log("Submitting code:", { language, code });
-
-      const res = await axiosClient.post(`/submission/run/${id}`, {
-        language,
-        code,
-      });
-
-      console.log("Run Code Response:", res.data);
-
-      // ✅ Merge backend results with displayInput from problem data
-      const enrichedResults = res.data.results.map((result, index) => {
-        const originalTestCase = problem.visibleTestCases?.[index];
-        return {
-          ...result,
-          displayInput: originalTestCase?.displayInput || result.displayInput,
-        };
-      });
-
-      setVerdict(res.data.verdict);
-      setTestResult(enrichedResults);
-      setOutput(res.data.verdict);
-    } catch (err) {
-      console.error(err);
-      setOutput(err.response?.data || "Error running code");
-    } finally {
-      setIsRunning(false);
-    }
+      setIsRunning(true); setVerdict(""); setTestResult([]); setOutputMsg("Running…");
+      const res = await axiosClient.post(`/submission/run/${id}`, { language, code });
+      const enriched = res.data.results.map((r, i) => ({
+        ...r, displayInput: problem.visibleTestCases?.[i]?.displayInput || r.displayInput,
+      }));
+      setVerdict(res.data.verdict); setTestResult(enriched); setOutputMsg(res.data.verdict);
+    } catch (err) { setOutputMsg(err.response?.data || "Error running code"); }
+    finally { setIsRunning(false); }
   };
 
-  /* ---------------- Submit Code ---------------- */
-  const handleSubmitCode = async () => {
+  const handleSubmit = async () => {
     try {
-      setIsSubmitting(true);
-      setOutput("Submitting...");
-      setVerdict("");
-      setTestResult([]);
-      console.log("1. Submit button clicked")
-       console.log("3. Sending request to backend...");
-      const res = await axiosClient.post(`/submission/submit/${id}`, {
-        language,
-        code,
-      });
-      console.log("4. Response received:", res.data);
-
-      const submission = res.data;
-      const status = submission.status || "Submitted";
-      const passed = submission.testCasepassed ?? 0;
-      const total = submission.testCasetotal ?? 0;
-      const message =
-        status === "Accepted"
-          ? `Accepted (${passed}/${total} hidden tests passed)`
-          : submission.errormessage || status;
-
-      setVerdict(status);
-      setOutput(message);
-    } catch (err) {
-      console.error(err);
-      setVerdict("Not Accepted");
-      setOutput(err.response?.data || "Error submitting code");
-    } finally {
-      setIsSubmitting(false);
-    }
+      setIsSubmitting(true); setVerdict(""); setTestResult([]); setOutputMsg("Submitting…");
+      const res = await axiosClient.post(`/submission/submit/${id}`, { language, code });
+      const sub = res.data;
+      const status = sub.status || "Submitted";
+      const msg = status === "Accepted"
+        ? `Accepted — ${sub.testCasepassed ?? 0}/${sub.testCasetotal ?? 0} hidden tests passed`
+        : sub.errormessage || status;
+      setVerdict(status); setOutputMsg(msg);
+    } catch (err) { setVerdict("Error"); setOutputMsg(err.response?.data || "Error submitting"); }
+    finally { setIsSubmitting(false); }
   };
 
-  /* ---------------- Render Guards ---------------- */
-  if (loading) {
-    return <div className="text-white p-6">Loading...</div>;
-  }
+  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>Loading problem…</div>;
+  if (!problem) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--red)" }}>Problem not found.</div>;
 
-  if (!problem) {
-    return <div className="text-red-500 p-6">Problem not found</div>;
-  }
+  const diffColor = { easy: "var(--green)", medium: "var(--yellow)", hard: "var(--red)" }[problem.difficulty?.toLowerCase()] || "var(--text-secondary)";
+  const testList = testResult.length ? testResult : (problem.visibleTestCases || []);
+  const busy = isRunning || isSubmitting;
 
-  // console.log("Problem Data:", problem);
-
-  /* ---------------- UI ---------------- */
   return (
-    <div className="grid grid-cols-12 h-screen overflow-hidden min-h-0">
-      {/* Left Panel */}
-      <div className="col-span-4 bg-gray-800 p-4 overflow-y-auto h-screen min-h-0">
-        <h2 className="text-2xl font-bold mb-2">{problem.title}</h2>
-        <p className="text-sm text-yellow-400 mb-4">
-          Difficulty: {problem.difficulty}
-        </p>
-        <p className="text-gray-300 whitespace-pre-line mb-4">{problem.description}</p>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)", overflow: "hidden" }}>
 
-        <h3 className="text-lg font-semibold mb-2">Example Test Cases</h3>
-        <ul className="space-y-2">
-          {problem.visibleTestCases.map((test, i) => (
-            <li key={i} className="bg-gray-700 p-2 rounded text-sm">
-              <p>
-                <b>Input:</b> {test.displayInput || test.input}
-              </p>
-              <p>
-                <b>Output:</b> {test.output}
-              </p>
-              {test.explanation && (
-                <p>
-                  <b>Explanation:</b> {test.explanation}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-
-
-        {/* Tags Accordion */}
-        <div className="my-4">
-          <button
-            type="button"
-            onClick={() => setIsTagsOpen((prev) => !prev)}
-            className="w-full flex items-center justify-between bg-gray-700 px-3 py-2 rounded"
+      {/* TOP BAR */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)", padding: "0 1rem", height: "48px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", textDecoration: "none", fontSize: "0.82rem" }}
+            onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+            onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary)"}
           >
-            <span className="font-semibold">Tags ({problem.tags?.length || 0})</span>
-            <span>{isTagsOpen ? "▲" : "▼"}</span>
-          </button>
-
-          {isTagsOpen && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(problem.tags && problem.tags.length > 0
-                ? problem.tags
-                : ["No tags"]
-              ).map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 bg-gray-600 rounded text-sm text-white"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+            <ArrowLeft size={14} /> Problems
+          </Link>
+          <span style={{ color: "var(--border)" }}>|</span>
+          <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>{problem.title}</span>
+          <span style={{ color: diffColor, fontSize: "0.75rem", fontWeight: 600 }}>{problem.difficulty}</span>
         </div>
-      </div>
 
-      {/* Right Panel */}
-      <div className="col-span-8 bg-gray-800 flex flex-col h-screen min-h-0">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center p-2 border-b border-gray-700">
-          <select
-            className="bg-gray-600 text-white p-2 rounded"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <select value={language} onChange={e => setLanguage(e.target.value)} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: "6px", padding: "0.35rem 0.65rem", fontSize: "0.8rem", cursor: "pointer", outline: "none", fontFamily: "'JetBrains Mono', monospace" }}>
             <option value="cpp">C++</option>
             <option value="python">Python</option>
             <option value="java">Java</option>
             <option value="javascript">JavaScript</option>
           </select>
 
-          <div>
-            <button
-              onClick={handleRunCode}
-              disabled={isRunning || isSubmitting}
-              className={`bg-gray-700 px-4 py-2 rounded mr-3 ${
-                isRunning || isSubmitting ? "opacity-60 cursor-not-allowed" : ""
-              }`}
-            >
-              Run
-            </button>
-            <button
-              onClick={handleSubmitCode}
-              disabled={isRunning || isSubmitting}
-              className={`bg-yellow-500 px-4 py-2 rounded text-black ${
-                isRunning || isSubmitting ? "opacity-60 cursor-not-allowed" : ""
-              }`}
-            >
-              Submit
-            </button>
+          <button onClick={handleRun} disabled={busy} style={{ display: "flex", alignItems: "center", gap: "0.35rem", background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: "6px", padding: "0.35rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.5 : 1 }}>
+            <Play size={13} /> Run
+          </button>
+
+          <button onClick={handleSubmit} disabled={busy} style={{ display: "flex", alignItems: "center", gap: "0.35rem", background: "var(--green)", border: "none", color: "#fff", borderRadius: "6px", padding: "0.35rem 0.85rem", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", opacity: busy ? 0.5 : 1 }}>
+            <Upload size={13} /> Submit
+          </button>
+        </div>
+      </div>
+
+      {/* SPLIT */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
+
+        {/* LEFT — description */}
+        <div style={{ width: "40%", flexShrink: 0, borderRight: "1px solid var(--border)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+            <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.25rem" }}>{problem.title}</h2>
+            <p style={{ color: diffColor, fontSize: "0.78rem", fontWeight: 600, marginBottom: "1rem" }}>{problem.difficulty}</p>
+            <p style={{ color: "var(--text-secondary)", lineHeight: 1.7, fontSize: "0.88rem", whiteSpace: "pre-line", marginBottom: "1.5rem" }}>{problem.description}</p>
+
+            <h3 style={{ fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Examples</h3>
+            {problem.visibleTestCases?.map((tc, i) => (
+              <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.8rem" }}>
+                <p style={{ color: "var(--text-secondary)", marginBottom: "0.4rem", fontFamily: "'Inter'", fontSize: "0.72rem", fontWeight: 600 }}>EXAMPLE {i + 1}</p>
+                <div><span style={{ color: "var(--accent-2)" }}>Input   </span>{tc.displayInput || tc.input}</div>
+                <div style={{ marginTop: "0.3rem" }}><span style={{ color: "var(--green)" }}>Output  </span>{tc.output}</div>
+                {tc.explanation && <div style={{ marginTop: "0.4rem", color: "var(--text-secondary)", fontFamily: "'Inter'", fontSize: "0.78rem", fontStyle: "italic" }}>{tc.explanation}</div>}
+              </div>
+            ))}
+
+            {problem.tags?.length > 0 && (
+              <div style={{ marginTop: "1rem" }}>
+                <button onClick={() => setIsTagsOpen(p => !p)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.65rem 0.9rem", cursor: "pointer", color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: 600 }}>
+                  <span>Topics ({problem.tags.length})</span>
+                  {isTagsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+                {isTagsOpen && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", padding: "0.75rem 0.25rem 0" }}>
+                    {problem.tags.map((tag, i) => (
+                      <span key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "20px", padding: "0.2rem 0.65rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Verdict */}
-        {verdict && (
-          <div
-            className={`p-2 text-center font-bold ${verdict === "Accepted"
-              ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
-              }`}
-          >
-            {verdict}
-          </div>
-        )}
+        {/* RIGHT — editor + output */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
-        {/* Editor */}
-        <div className="flex-1 min-h-0">
-          <Editor
-            height="100%"
-            theme="vs-dark"
-            language={language}
-            value={code}
-            onChange={(value) => setCode(value || "")}
-            options={{
-              fontSize: 14,
-              minimap: { enabled: false },
-              automaticLayout: true,
-            }}
-          />
-        </div>
-
-        {/* Output + Testcase Results (LeetCode-like with tabs) */}
-        <div className="max-h-80 bg-[#0b0b0f] text-white border-t border-gray-700 flex flex-col min-h-0">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <span className="text-gray-200">Output</span>
-              <span
-                className={`px-2 py-1 rounded text-xs font-semibold ${
-                  isRunning || isSubmitting
-                    ? "bg-yellow-500/20 text-yellow-300"
-                    : verdict === "Accepted"
-                      ? "bg-green-500/20 text-green-300"
-                      : verdict
-                        ? "bg-red-500/20 text-red-300"
-                        : "bg-gray-600 text-gray-200"
-                }`}
-              >
-                {isRunning
-                  ? "Running"
-                  : isSubmitting
-                    ? "Submitting"
-                    : verdict || "Ready"}
-              </span>
+          {verdict && (
+            <div style={{ padding: "0.5rem 1rem", textAlign: "center", fontWeight: 700, fontSize: "0.85rem", background: verdict === "Accepted" ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)", color: verdict === "Accepted" ? "var(--green)" : "var(--red)", borderBottom: `1px solid ${verdict === "Accepted" ? "rgba(63,185,80,0.3)" : "rgba(248,81,73,0.3)"}`, flexShrink: 0 }}>
+              {outputMsg || verdict}
             </div>
-            <div className="text-xs text-gray-400">Console</div>
+          )}
+
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <Editor height="100%" theme="vs-dark" language={language} value={code} onChange={v => setCode(v || "")}
+              options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, padding: { top: 12 } }} />
           </div>
 
-          {/* Tabs for testcases */}
-          <div className="px-3 py-2 border-b border-gray-800 overflow-x-auto">
-            <div className="flex gap-2 text-xs">
-              {(testResult.length ? testResult : problem.visibleTestCases || []).map((t, i) => {
-                const status = t.status;
-                const active = i === selectedTestIndex;
-                const statusClass = status === "Accepted"
-                  ? "text-green-300 border-green-500/60"
-                  : status
-                    ? "text-red-300 border-red-500/60"
-                    : "text-gray-300 border-gray-600";
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedTestIndex(i)}
-                    className={`px-3 py-1 rounded border bg-gray-900/60 hover:bg-gray-800/80 ${statusClass} ${active ? "ring-1 ring-blue-500" : ""
-                      }`}
-                  >
-                    {`Case ${i + 1}`}
-                  </button>
-                );
-              })}
+          {/* Output panel */}
+          <div style={{ height: "220px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "36px", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "0.4rem", overflowX: "auto" }}>
+                {testList.map((t, i) => {
+                  const active = i === selectedTestIndex;
+                  const color = t.status === "Accepted" ? "var(--green)" : t.status ? "var(--red)" : "var(--text-secondary)";
+                  return (
+                    <button key={i} onClick={() => setSelectedTestIndex(i)} style={{ background: active ? "var(--bg-card)" : "transparent", border: active ? "1px solid var(--border)" : "1px solid transparent", borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem", color, cursor: "pointer", fontWeight: active ? 600 : 400, whiteSpace: "nowrap" }}>
+                      Case {i + 1} {t.status === "Accepted" ? "✓" : t.status ? "✗" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Console</span>
             </div>
-          </div>
 
-          <div className="overflow-auto max-h-72 space-y-3 px-3 py-2 flex-1 min-h-0">
-            {/* Selected testcase details */}
-            <div>
-              <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Testcase</div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
               {(() => {
-                const list = testResult.length ? testResult : problem.visibleTestCases || [];
-                if (!list.length) return <div className="text-xs text-gray-500">No testcases</div>;
-                const t = list[Math.min(selectedTestIndex, list.length - 1)];
-                const status = t.status;
+                if (!testList.length) return <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>;
+                const t = testList[Math.min(selectedTestIndex, testList.length - 1)];
                 return (
-                  <div className="border border-gray-700 rounded p-2 bg-gray-900/50 space-y-1">
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-gray-200">Testcase {t.testcase ?? (selectedTestIndex + 1)}</span>
-                      <span
-                        className={
-                          status === "Accepted"
-                            ? "text-green-400"
-                            : status
-                              ? "text-red-400"
-                              : "text-gray-400"
-                        }
-                      >
-                        {status || "Not run"}
-                      </span>
-                    </div>
-
-                    {/* {t.input && (
-                      <div>
-                        <pre className="text-xs text-gray-300 whitespace-pre-wrap">Actual Input: {t.input}</pre>
-                      </div>
-                    )} */}
-                    {t.displayInput && (
-                      <pre className="text-xs text-green-300 whitespace-pre-wrap font-semibold">Input: {t.displayInput}</pre>
-                    )}
-                    {(t.expected_output || t.output) && (
-                      <div className="space-y-1">
-                        {t.expected_output && (
-                          <pre className="text-xs text-gray-400 whitespace-pre-wrap">Expected: {t.expected_output}</pre>
-                        )}
-                        {t.output && (
-                          <pre className="text-xs text-green-300 whitespace-pre-wrap">Output: {t.output}</pre>
-                        )}
-                      </div>
-                    )}
-                    {t.error && (
-                      <pre className="text-xs text-red-400 whitespace-pre-wrap">Error: {t.error}</pre>
-                    )}
-                    {t.explanation && (
-                      <pre className="text-xs text-gray-400 whitespace-pre-wrap">Explanation: {t.explanation}</pre>
-                    )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {t.displayInput && <div><span style={{ color: "var(--text-secondary)" }}>Input:    </span><span style={{ color: "var(--accent-2)" }}>{t.displayInput}</span></div>}
+                    {t.expected_output && <div><span style={{ color: "var(--text-secondary)" }}>Expected: </span><span style={{ color: "var(--text-primary)" }}>{t.expected_output}</span></div>}
+                    {t.output && <div><span style={{ color: "var(--text-secondary)" }}>Output:   </span><span style={{ color: t.status === "Accepted" ? "var(--green)" : "var(--red)" }}>{t.output}</span></div>}
+                    {t.error && <div><span style={{ color: "var(--text-secondary)" }}>Error:    </span><span style={{ color: "var(--red)" }}>{t.error}</span></div>}
                   </div>
                 );
               })()}

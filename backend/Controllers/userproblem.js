@@ -7,137 +7,6 @@ const {
   submitToken,
 } = require("../utilis/Problemutility");
 
-// const createproblem=async(req,res)=>{
-// 	console.log("Request body =>", req.body);
-
-// 	// const {title,description,difficulty,tags,visibletestcases,hiddentestcases,startcode=[],referencesolution=[],problemcreator}=req.body;
-// 	const {
-//   title,
-//   description,
-//   difficulty,
-//   tags,
-//   visibleTestCases = [],
-//   hiddenTestCases = [],
-//   startcode = [],
-//   referencesolution = [],
-//   problemcreator
-// } = req.body;
-
-// 	try{
-// 		const refs = Array.isArray(referencesolution) ? referencesolution : [];
-// 		   if (!Array.isArray(referencesolution)) {
-//       return res.status(400).json({ message: "referencesolution must be an array" });
-//     }
-
-// 		for(const {language,completeCode} of refs){
-
-//     // source code
-// 		// language_id
-// 		// stdin
-// 		// expected_output
-// 		const language_id=getLanguageId(language);
-
-// 		// i am creating batch submission
-//     const submissions=visibleTestCases.map((testcase)=>({
-// 			source_code:completeCode,
-// 			language_id:language_id,
-// 			stdin:testcase.input,
-// 			expected_output:testcase.output
-
-// 		}));
-// 		const submitresult=await submitBatch(submissions);
-// 		// console.log(submitresult);
-
-// 		const resulttoken=submitresult.map((value)=>value.token);
-// 		// console.log(resulttoken);
-// 		    const testresult=    await submitToken(resulttoken);
-// 				// console.log(testresult);
-// 				for(const test of testresult){
-// 					if(test.status_id!==3){
-// 						res.status(400).json({
-// 							message:"reference solution is not passing all the test cases"
-// 						})
-// 					}
-// 					else if(test.status_id==5){
-// 						res.status(400).json({
-// 							message:"time limit exceded"
-// 						})
-
-// 					}
-
-// 				}
-
-// 		}
-// 		// we can store the problem in the database
-// 	const userproblem=	await problem.create({
-// 			...req.body,
-// 			problemcreator:req.result._id
-// 		})
-// 		res.status(201).json({
-// 			message:"problem created successfully",
-// 		})
-
-// 	}
-// 	catch(err){
-//    console.log(err);
-// 	 res.status(400).json({
-// 		message:err.message
-// 	 })
-
-// 	}
-// }
-// const createproblem = async (req, res) => {
-// 	 console.log("STARTCODE:", req.body.startcode, Array.isArray(req.body.startcode));
-//     console.log("REFERENCESOLUTION:", req.body.referencesolution, Array.isArray(req.body.referencesolution));
-
-//   try {
-//     const {
-//       title, description, difficulty, tags,
-//       visibleTestCases = [], hiddenTestCases = [],
-//       startcode = [], referencesolution = [], problemcreator
-//     } = req.body;
-
-//     if (!Array.isArray(referencesolution)) {
-//       return res.status(400).json({ message: "referencesolution must be an array" });
-//     }
-
-//     for (const { language, initialcode } of referencesolution) {
-//       const language_id = getLanguageId(language);
-
-//       const submissions = visibleTestCases.map(testcase => ({
-//         source_code: initialcode,
-//         language_id:language_id,
-//         stdin: testcase.input,
-//         expected_output: testcase.output
-//       }));
-
-//       const submitResult = await submitBatch(submissions);
-//       const tokens = submitResult.map(v => v.token);
-//       const testResults = await submitToken(tokens);
-
-//       for (const test of testResults) {
-//         const statusId = test.status.id;
-//         if (statusId !== 3) { // 3 = Accepted
-//           if (statusId === 4) return res.status(400).json({ message: "Wrong Answer" });
-//           if (statusId === 5) return res.status(400).json({ message: "Time Limit Exceeded" });
-//           if (statusId === 6) return res.status(400).json({ message: "Compilation Error" });
-//           if (statusId === 9) return res.status(400).json({ message: "Runtime Error" });
-//         }
-//       }
-//     }
-
-//     const userProblem = await problem.create({
-//       ...req.body,
-//       problemcreator: req.result._id
-//     });
-
-//     return res.status(201).json({ message: "Problem created successfully", problem: userProblem });
-
-//   } catch (err) {
-//     console.log(err);
-//     return res.status(500).json({ message: err.message });
-//   }
-// };
 
 const createproblem = async (req, res) => {
   // console.log("Frontend sent this data:", req.body);
@@ -192,56 +61,7 @@ const updateproblem = async (req, res) => {
     if (!dsaproblem) {
       return res.status(404).send("problem not found");
     }
-    // const refs = Array.isArray(referencesolution) ? referencesolution : [];
-    // for (const { language, initialcode } of refs) {
-    //   // source code
-    //   // language_id
-    //   // stdin
-    //   // expected_output
-    //   const language_id = getLanguageId(language);
-
-    //   // i am creating batch submission
-    //   const submissions = visibleTestCases.map((testcase) => ({
-    //     source_code: initialcode,
-    //     language_id: language_id,
-    //     stdin: testcase.input,
-    //     expected_output: testcase.output,
-    //   }));
-    //   const submitresult = await submitBatch(submissions);
-    //   // console.log(submitresult);
-
-    //   const resulttoken = submitresult.map((value) => value.token);
-    //   // console.log(resulttoken);
-    //   const testresult = await submitToken(resulttoken);
-    //   // console.log(testresult);
-    //   for (const test of testresult) {
-    //     if (test.status_id !== 3) {
-    //       res.status(400).json({
-    //         message: "reference solution is not passing all the test cases",
-    //       });
-    //     } else if (test.status_id == 5) {
-    //       res.status(400).json({
-    //         message: "time limit exceded",
-    //       });
-    //     } else if (test.status_id == 6) {
-    //       res.status(400).json({
-    //         message: "compilation error",
-    //       });
-    //     } else if (test.status_id == 9) {
-    //       res.status(400).json({
-    //         message: "Runtime error",
-    //       });
-    //     } else if (test.status_id == 3) {
-    //       res.status(400).json({
-    //         message: "Accepted",
-    //       });
-    //     } else if (test.status_id == 4) {
-    //       res.status(400).json({
-    //         message: "wrong answer",
-    //       });
-    //     }
-    //   }
-    // }
+   
     const newproblem = await problem.findByIdAndUpdate(
       id,
       { ...req.body },
@@ -329,22 +149,7 @@ const solvedproblembyuser = async (req, res) => {
     res.status(500).send(err.message);
   }
 };
-// const submittedproblem=async(req,res)=>{
-// 	try{
-// 		const userId=req.result._id;
-// 		const problemId=req.params.id;
-// 		const ans=await Submission.find({userId,problemId});
-// 		if(ans.length==0){
-// 			res.status(200).send("no submission");
-// 		}
-// 		res.status(200).send(ans);
 
-// 	}
-// 	catch(err){
-// 		res.status(500).send("internal server error");
-
-// 	}
-// }
 const submittedproblem = async (req, res) => {
   try {
     const userId = req.result._id;
@@ -391,6 +196,38 @@ const submittedproblem = async (req, res) => {
   }
 };
 
+const getallsubmissions = async (req, res) => {
+  try {
+    const userId = req.result._id;
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50); // cap at 50/page
+    const skip = (page - 1) * limit;
+
+    const [submissions, total] = await Promise.all([
+      Submission.find({ userId })
+        .populate("problemId", "_id title difficulty")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Submission.countDocuments({ userId }),
+    ]);
+
+    return res.status(200).json({
+      submissions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
 module.exports = {
   createproblem,
   updateproblem,
@@ -399,4 +236,5 @@ module.exports = {
   getallproblem,
   solvedproblembyuser,
   submittedproblem,
+  getallsubmissions,
 };
