@@ -9,17 +9,7 @@ const {
 
 
 const createproblem = async (req, res) => {
-  // console.log("Frontend sent this data:", req.body);
-  // console.log(
-  //   "STARTCODE:",
-  //   req.body.startcode,
-  //   Array.isArray(req.body.startcode)
-  // );
-  // console.log(
-  //   "REFERENCESOLUTION:",
-  //   req.body.referencesolution,
-  //   Array.isArray(req.body.referencesolution)
-  // );
+
 
   try {
     const userProblem = await problem.create({
