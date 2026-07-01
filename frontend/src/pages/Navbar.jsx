@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logoutUser } from "../store/authSlice";
 import { User, LogOut, BarChart2, ChevronDown } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 const Navbar = ({ filter, setfilter, isUser }) => {
   const dispatch = useDispatch();
@@ -64,6 +65,7 @@ const Navbar = ({ filter, setfilter, isUser }) => {
                 {[
                   { label: "Profile", icon: <User size={14} />, path: "/profile" },
                   { label: "Submissions", icon: <BarChart2 size={14} />, path: "/submissions" },
+                   { label: "Learning Notebook", icon: <BookOpen size={14} />, path: "/learning-notes" },
                 ].map(item => (
                   <button key={item.label} onClick={() => { navigate(item.path); setOpen(false); }} style={{
                     width: "100%", background: "none", border: "none", textAlign: "left",

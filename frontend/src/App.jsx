@@ -14,6 +14,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminProblemList from "./pages/admin/AdminProblemList";
 import ProblemForm from "./pages/admin/ProblemForm";
 import Editpages from "./pages/admin/Editpages";
+import LearningNotebook from "./pages/LearningNotebook";
 
 import AdminRoute from "./pages/AdminRoute";
 import { checkAuth } from "./store/authSlice";
@@ -76,6 +77,10 @@ function App() {
         path="/submissions"
         element={isAuthenticated ? <Submissions /> : <Navigate to="/login" />}
       />
+       <Route path="/learning-notes" element={< LearningNotebook />} />
+      
+
+<Route path="/notebook" element={isAuthenticated ? <LearningNotebook /> : <Navigate to="/login" />} />
 
       <Route
         path="/admin/*"

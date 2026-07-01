@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosClient from "../utilis/axiosClient";
 import Editor from "@monaco-editor/react";
-import { Play, Upload, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { Play, Upload, ChevronDown, ChevronUp, ArrowLeft, NotebookPen, CheckCircle2, Trash2 } from "lucide-react";
 import Navbar from "./Navbar";
 import Discussion from "./Discussion";
+
 
 const templates = {
   cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
@@ -13,6 +14,147 @@ const templates = {
   java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
 };
 
+// ── My Note tab component ──────────────────────────────────────────
+const MyNote = ({ problemId }) => {
+  const [note, setNote] = useState("");
+  const [savedNote, setSavedNote] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    axiosClient.get(`/mistake/${problemId}`)
+      .then(({ data }) => {
+        if (data) { setNote(data.note); setSavedNote(data); }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [problemId]);
+
+  const handleSave = async () => {
+    if (!note.trim()) return;
+    try {
+      setSaving(true);
+      if (savedNote) {
+        const { data } = await axiosClient.put(`/mistake/${savedNote._id}`, { note });
+        setSavedNote(data);
+      } else {
+        const { data } = await axiosClient.post("/mistake", { problemId, note });
+        setSavedNote(data.mistake);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) { console.error(err); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this note?")) return;
+    try {
+      setDeleting(true);
+      await axiosClient.delete(`/mistake/${savedNote._id}`);
+      setSavedNote(null);
+      setNote("");
+    } catch (err) { console.error(err); }
+    finally { setDeleting(false); }
+  };
+
+  if (loading) return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+      Loading…
+    </div>
+  );
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <NotebookPen size={15} color="var(--accent)" />
+        <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>My Note</span>
+        {savedNote && (
+          <span style={{ marginLeft: "auto", background: "rgba(63,185,80,0.12)", color: "var(--green)", border: "1px solid rgba(63,185,80,0.3)", borderRadius: "20px", padding: "0.1rem 0.55rem", fontSize: "0.68rem", fontWeight: 700 }}>
+            ✓ Saved
+          </span>
+        )}
+      </div>
+
+      <p style={{ color: "var(--text-secondary)", fontSize: "0.78rem", margin: 0, lineHeight: 1.5 }}>
+        What did you learn? Write down mistakes, tricks, or approaches to remember.
+      </p>
+
+      {/* Textarea */}
+      <textarea
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        placeholder="e.g. Forgot to handle empty array edge case. Key insight was using two pointers instead of nested loops..."
+        style={{
+          flex: 1, minHeight: "200px",
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          borderLeft: "3px solid var(--accent)",
+          borderRadius: "8px", padding: "0.85rem",
+          color: "var(--text-primary)", fontSize: "0.84rem",
+          lineHeight: 1.7, resize: "vertical", outline: "none",
+          fontFamily: "'Inter', sans-serif",
+        }}
+        onFocus={e => e.target.style.borderColor = "var(--accent-2)"}
+        onBlur={e => e.target.style.borderColor = "var(--border)"}
+      />
+
+      {/* Character count + buttons */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+        <span style={{ fontSize: "0.7rem", color: note.length > 2800 ? "var(--red)" : "var(--text-secondary)" }}>
+          {note.length} / 3000
+        </span>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {savedNote && (
+            <button onClick={handleDelete} disabled={deleting} style={{
+              display: "flex", alignItems: "center", gap: "0.3rem",
+              background: "rgba(248,81,73,0.1)", color: "var(--red)",
+              border: "1px solid rgba(248,81,73,0.25)", borderRadius: "7px",
+              padding: "0.4rem 0.8rem", fontSize: "0.78rem", fontWeight: 600,
+              cursor: deleting ? "not-allowed" : "pointer",
+            }}>
+              <Trash2 size={12} /> {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
+          <button onClick={handleSave} disabled={saving || !note.trim() || note.length > 3000} style={{
+            display: "flex", alignItems: "center", gap: "0.3rem",
+            background: saved ? "rgba(63,185,80,0.15)" : "var(--accent)",
+            color: saved ? "var(--green)" : "#fff",
+            border: saved ? "1px solid rgba(63,185,80,0.3)" : "none",
+            borderRadius: "7px", padding: "0.4rem 0.9rem",
+            fontSize: "0.78rem", fontWeight: 600,
+            cursor: (saving || !note.trim()) ? "not-allowed" : "pointer",
+            opacity: (saving || !note.trim()) ? 0.6 : 1,
+            transition: "all 0.2s",
+          }}>
+            {saved ? <><CheckCircle2 size={12} /> Saved!</> : saving ? "Saving…" : savedNote ? "Update" : "Save Note"}
+          </button>
+        </div>
+      </div>
+
+      {/* Link to full notebook */}
+      <Link to="/notebook" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textDecoration: "none", marginTop: "0.25rem" }}
+        onMouseEnter={e => e.currentTarget.style.color = "var(--accent-2)"}
+        onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary)"}
+      >
+        <NotebookPen size={12} /> View all notes in Learning Notebook →
+      </Link>
+
+      {/* Tip when empty */}
+      {!savedNote && !note && (
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.8rem", fontSize: "0.76rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          💡 Best time to write is right after solving — the lesson is freshest then.
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Main CodeEditor component ──────────────────────────────────────
 const CodeEditor = () => {
   const { id } = useParams();
   const [problem, setProblem] = useState(null);
@@ -89,12 +231,12 @@ const CodeEditor = () => {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)", fontFamily: "'Inter', sans-serif", overflow: "hidden" }}>
 
-      {/* ── GLOBAL NAVBAR (provides Home + Profile + Submissions everywhere) ── */}
+      {/* GLOBAL NAVBAR */}
       <div style={{ flexShrink: 0 }}>
         <Navbar />
       </div>
 
-      {/* ── TOP BAR ── */}
+      {/* TOP BAR */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)",
@@ -113,7 +255,6 @@ const CodeEditor = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          {/* Language selector */}
           <select value={language} onChange={e => setLanguage(e.target.value)} style={{
             background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)",
             borderRadius: "6px", padding: "0.35rem 0.65rem", fontSize: "0.8rem", cursor: "pointer", outline: "none",
@@ -130,7 +271,7 @@ const CodeEditor = () => {
             background: "var(--bg-card)", border: "1px solid var(--border)",
             color: "var(--text-primary)", borderRadius: "6px", padding: "0.35rem 0.85rem",
             fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
-            opacity: (isRunning || isSubmitting) ? 0.5 : 1, transition: "opacity 0.15s",
+            opacity: (isRunning || isSubmitting) ? 0.5 : 1,
           }}>
             <Play size={13} /> Run
           </button>
@@ -140,44 +281,48 @@ const CodeEditor = () => {
             background: "var(--green)", border: "none",
             color: "#fff", borderRadius: "6px", padding: "0.35rem 0.85rem",
             fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
-            opacity: (isRunning || isSubmitting) ? 0.5 : 1, transition: "opacity 0.15s",
+            opacity: (isRunning || isSubmitting) ? 0.5 : 1,
           }}>
             <Upload size={13} /> Submit
           </button>
         </div>
       </div>
 
-      {/* ── MAIN SPLIT PANEL ── */}
+      {/* MAIN SPLIT PANEL */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
-        {/* LEFT – problem description / discussion */}
+        {/* LEFT */}
         <div style={{
           width: `${leftWidth}%`, flexShrink: 0, overflow: "hidden",
           display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)",
         }}>
 
-          {/* Tab bar: Description / Discussion */}
+          {/* Tab bar: 3 tabs */}
           <div style={{ display: "flex", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-            {["description", "discussion"].map(tab => (
-              <button key={tab} onClick={() => setLeftTab(tab)} style={{
+            {[
+              { key: "description", label: "Description" },
+              { key: "discussion",  label: "Discussion" },
+              { key: "mynote",      label: "My Note" },
+            ].map(tab => (
+              <button key={tab.key} onClick={() => setLeftTab(tab.key)} style={{
                 flex: 1, background: "none", border: "none",
-                borderBottom: leftTab === tab ? "2px solid var(--accent)" : "2px solid transparent",
-                color: leftTab === tab ? "var(--text-primary)" : "var(--text-secondary)",
-                padding: "0.7rem", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", textTransform: "capitalize",
+                borderBottom: leftTab === tab.key ? "2px solid var(--accent)" : "2px solid transparent",
+                color: leftTab === tab.key ? "var(--text-primary)" : "var(--text-secondary)",
+                padding: "0.65rem 0.4rem", fontSize: "0.78rem", fontWeight: 600,
+                cursor: "pointer", whiteSpace: "nowrap",
               }}>
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Description tab content */}
+          {/* Description */}
           {leftTab === "description" && (
             <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
               <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.25rem" }}>{problem.title}</h2>
               <p style={{ color: diffColor, fontSize: "0.78rem", fontWeight: 600, marginBottom: "1rem" }}>{problem.difficulty}</p>
               <p style={{ color: "var(--text-secondary)", lineHeight: 1.7, fontSize: "0.88rem", whiteSpace: "pre-line", marginBottom: "1.5rem" }}>{problem.description}</p>
 
-              {/* Example test cases */}
               <h3 style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Examples</h3>
               {problem.visibleTestCases?.map((tc, i) => (
                 <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.8rem" }}>
@@ -188,7 +333,6 @@ const CodeEditor = () => {
                 </div>
               ))}
 
-              {/* Tags accordion */}
               {problem.tags?.length > 0 && (
                 <div style={{ marginTop: "1rem" }}>
                   <button onClick={() => setIsTagsOpen(p => !p)} style={{
@@ -211,15 +355,17 @@ const CodeEditor = () => {
             </div>
           )}
 
-          {/* Discussion tab content */}
+          {/* Discussion */}
           {leftTab === "discussion" && <Discussion problemId={id} />}
+
+          {/* My Note */}
+          {leftTab === "mynote" && <MyNote problemId={id} />}
 
         </div>
 
         {/* RIGHT – editor + output */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
-          {/* Verdict banner */}
           {verdict && (
             <div style={{
               padding: "0.5rem 1rem", textAlign: "center", fontWeight: 700, fontSize: "0.85rem",
@@ -232,7 +378,6 @@ const CodeEditor = () => {
             </div>
           )}
 
-          {/* Monaco editor */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <Editor
               height="100%"
@@ -244,9 +389,7 @@ const CodeEditor = () => {
             />
           </div>
 
-          {/* Output panel */}
           <div style={{ height: "220px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-            {/* Tab bar */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "36px", flexShrink: 0 }}>
               <div style={{ display: "flex", gap: "0.4rem", overflowX: "auto" }}>
                 {testList.map((t, i) => {
@@ -258,8 +401,7 @@ const CodeEditor = () => {
                       background: isActive ? "var(--bg-card)" : "transparent",
                       border: isActive ? "1px solid var(--border)" : "1px solid transparent",
                       borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem",
-                      color, cursor: "pointer", fontWeight: isActive ? 600 : 400,
-                      whiteSpace: "nowrap",
+                      color, cursor: "pointer", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
                     }}>
                       Case {i + 1} {st === "Accepted" ? "✓" : st ? "✗" : ""}
                     </button>
@@ -269,7 +411,6 @@ const CodeEditor = () => {
               <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Console</span>
             </div>
 
-            {/* Test detail */}
             <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
               {(() => {
                 if (!testList.length) return <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>;
@@ -292,7 +433,6 @@ const CodeEditor = () => {
 
       <style>{`
         @media (max-width: 768px) {
-          /* Stack panels vertically on mobile */
           [data-split] { flex-direction: column !important; }
         }
       `}</style>

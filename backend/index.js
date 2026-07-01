@@ -11,6 +11,7 @@ const problemrouter = require("./routes/problemcreate");
 const submitrouter = require("./routes/submit");
 const commentRouter = require("./routes/comment");
 const analyticsRouter=require("./routes/analytics");
+const mistakeRouter = require("./routes/mistake");
 const cors = require("cors");
 
 const allowedOrigins = [
@@ -37,6 +38,8 @@ app.use(
 
 
 
+
+
 app.use(express.json());
 app.use(cookieparser());
 app.use("/comment", commentRouter);
@@ -44,6 +47,7 @@ app.use("/user", authRouter);
 app.use("/problem", problemrouter);
 app.use("/submission", submitrouter);
 app.use("/analytics", analyticsRouter);
+app.use("/mistake", mistakeRouter);
 const main = require("./utilis/db");
 
 /// cookie come in json format
