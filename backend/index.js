@@ -49,6 +49,10 @@ app.use("/submission", submitrouter);
 app.use("/analytics", analyticsRouter);
 app.use("/mistake", mistakeRouter);
 const main = require("./utilis/db");
+// for make server active
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", time: new Date().toISOString() });
+});
 
 /// cookie come in json format
 const port = process.env.PORT || 5000;
