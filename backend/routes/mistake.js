@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const userMiddleware = require("../middleware/usermiddleware");
-const mistakeController = require("../controllers/mistakeController");
+const mistakeController = require("../Controllers/mistakeController");
 
 router.get("/",              userMiddleware, mistakeController.getAllMistakes);
 router.get("/:problemId",    userMiddleware, mistakeController.getNoteByProblem);
