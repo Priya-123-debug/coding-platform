@@ -16,7 +16,7 @@ const cors = require("cors");
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://codingplatformservice-2lb7-hiubn40tr-supriya-kumaris-projects.vercel.app",
+  "https://coding-platform-six-psi.vercel.app"
 ];
 
 app.use(
