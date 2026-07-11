@@ -18,8 +18,33 @@ import LearningNotebook from "./pages/LearningNotebook";
 
 import AdminRoute from "./pages/AdminRoute";
 import { checkAuth } from "./store/authSlice";
+import AppLoader from "./pages/AppLoader";
 
 function App() {
+  const [serverStatus, setServerStatus] = useState("checking"); // checking | slow | ready
+
+  useEffect(() => {
+    const slowTimer = setTimeout(() => setServerStatus("slow"), 3000);
+
+    const pingServer = async () => {
+      try {
+        await axios.get(`${USER_API_END_POINT}/health`, { withCredentials: false });
+      } catch (err) {
+        // even a 401/404 means the server responded — it's awake
+      } finally {
+        clearTimeout(slowTimer);
+        setServerStatus("ready");
+      }
+    };
+
+    pingServer();
+
+    return () => clearTimeout(slowTimer);
+  }, []);
+   if (serverStatus !== "ready") {
+    return <AppLoader status={serverStatus} />;
+  }
+
   const { isAuthenticated, loading, user } = useSelector(
     (state) => state.auth
   );
