@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -20,9 +20,13 @@ import LearningNotebook from "./pages/LearningNotebook";
 import AdminRoute from "./pages/AdminRoute";
 import { checkAuth } from "./store/authSlice";
 import AppLoader from "./pages/AppLoader";
+import { USER_API_END_POINT } from "./utilis/constant"; // adjust path to match yours
 
 function App() {
-  const [serverStatus, setServerStatus] = useState("checking"); // checking | slow | ready
+  // ── ALL HOOKS FIRST, UNCONDITIONALLY ──
+  const [serverStatus, setServerStatus] = useState("checking");
+  const { isAuthenticated, loading, user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const slowTimer = setTimeout(() => setServerStatus("slow"), 3000);
@@ -42,20 +46,16 @@ function App() {
 
     return () => clearTimeout(slowTimer);
   }, []);
-   if (serverStatus !== "ready") {
-    return <AppLoader status={serverStatus} />;
-  }
-
-  const { isAuthenticated, loading, user } = useSelector(
-    (state) => state.auth
-  );
-  const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  // 🔄 Global loading state
+  // ── NOW conditional returns are safe, since every hook above always ran ──
+  if (serverStatus !== "ready") {
+    return <AppLoader status={serverStatus} />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -66,10 +66,8 @@ function App() {
 
   return (
     <Routes>
-      {/* 🌍 Public landing page */}
       <Route path="/mainpage" element={<Mainpage />} />
 
-      {/* 🏠 Root route (auth-based redirect) */}
       <Route
         path="/"
         element={
@@ -83,30 +81,14 @@ function App() {
         }
       />
 
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" /> : <Login />}
-      />
-      <Route
-        path="/signup"
-        element={isAuthenticated ? <Navigate to="/" /> : <Signup />}
-      />
-
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/" /> : <Signup />} />
       <Route path="/problem/:id" element={<CodeEditor />} />
 
-      {/* 👤 Profile & Submissions */}
-      <Route
-        path="/profile"
-        element={isAuthenticated ? <Profile /> : <Navigate to="/login" />}
-      />
-      <Route
-        path="/submissions"
-        element={isAuthenticated ? <Submissions /> : <Navigate to="/login" />}
-      />
-       <Route path="/learning-notes" element={< LearningNotebook />} />
-      
-
-<Route path="/notebook" element={isAuthenticated ? <LearningNotebook /> : <Navigate to="/login" />} />
+      <Route path="/profile" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
+      <Route path="/submissions" element={isAuthenticated ? <Submissions /> : <Navigate to="/login" />} />
+      <Route path="/learning-notes" element={<LearningNotebook />} />
+      <Route path="/notebook" element={isAuthenticated ? <LearningNotebook /> : <Navigate to="/login" />} />
 
       <Route
         path="/admin/*"
