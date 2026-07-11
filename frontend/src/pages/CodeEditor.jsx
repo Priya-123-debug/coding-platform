@@ -6,7 +6,6 @@ import { Play, Upload, ChevronDown, ChevronUp, ArrowLeft, NotebookPen, CheckCirc
 import Navbar from "./Navbar";
 import Discussion from "./Discussion";
 
-
 const templates = {
   cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
   python: `def solve():\n    # Write your code here\n    pass\n\nif __name__ == "__main__":\n    solve()`,
@@ -14,7 +13,7 @@ const templates = {
   java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
 };
 
-// ── My Note tab component ──────────────────────────────────────────
+// ── MyNote component ───────────────────────────────────────────────
 const MyNote = ({ problemId }) => {
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState(null);
@@ -68,8 +67,6 @@ const MyNote = ({ problemId }) => {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
         <NotebookPen size={15} color="var(--accent)" />
         <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>My Note</span>
@@ -84,7 +81,6 @@ const MyNote = ({ problemId }) => {
         What did you learn? Write down mistakes, tricks, or approaches to remember.
       </p>
 
-      {/* Textarea */}
       <textarea
         value={note}
         onChange={e => setNote(e.target.value)}
@@ -103,7 +99,6 @@ const MyNote = ({ problemId }) => {
         onBlur={e => e.target.style.borderColor = "var(--border)"}
       />
 
-      {/* Character count + buttons */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
         <span style={{ fontSize: "0.7rem", color: note.length > 2800 ? "var(--red)" : "var(--text-secondary)" }}>
           {note.length} / 3000
@@ -136,15 +131,13 @@ const MyNote = ({ problemId }) => {
         </div>
       </div>
 
-      {/* Link to full notebook */}
-      <Link to="/notebook" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textDecoration: "none", marginTop: "0.25rem" }}
+      <Link to="/notebook" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", fontSize: "0.75rem", textDecoration: "none" }}
         onMouseEnter={e => e.currentTarget.style.color = "var(--accent-2)"}
         onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary)"}
       >
         <NotebookPen size={12} /> View all notes in Learning Notebook →
       </Link>
 
-      {/* Tip when empty */}
       {!savedNote && !note && (
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.8rem", fontSize: "0.76rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
           💡 Best time to write is right after solving — the lesson is freshest then.
@@ -154,7 +147,7 @@ const MyNote = ({ problemId }) => {
   );
 };
 
-// ── Main CodeEditor component ──────────────────────────────────────
+// ── Main CodeEditor ────────────────────────────────────────────────
 const CodeEditor = () => {
   const { id } = useParams();
   const [problem, setProblem] = useState(null);
@@ -168,7 +161,7 @@ const CodeEditor = () => {
   const [verdict, setVerdict] = useState("");
   const [testResult, setTestResult] = useState([]);
   const [outputMsg, setOutputMsg] = useState("");
-  const [leftWidth, setLeftWidth] = useState(40);
+  const [leftWidth] = useState(40);
   const [leftTab, setLeftTab] = useState("description");
 
   useEffect(() => { setSelectedTestIndex(0); }, [testResult.length]);
@@ -176,7 +169,7 @@ const CodeEditor = () => {
   useEffect(() => {
     axiosClient.get(`/problem/problembyid/${id}`)
       .then(res => setProblem(res.data))
-      .catch(err => console.error(err))
+      .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -193,9 +186,16 @@ const CodeEditor = () => {
       setIsRunning(true); setVerdict(""); setTestResult([]); setOutputMsg("Running…");
       const res = await axiosClient.post(`/submission/run/${id}`, { language, code });
       const enriched = res.data.results.map((r, i) => ({
-        ...r, displayInput: problem.visibleTestCases?.[i]?.displayInput || r.displayInput,
+        ...r,
+        yourOutput: r.output,
+        expectedOutput: r.expected_output,
+        displayInput: problem.visibleTestCases?.[i]?.displayInput || r.input,
+        output: undefined,
+        expected_output: undefined,
       }));
-      setVerdict(res.data.verdict); setTestResult(enriched); setOutputMsg(res.data.verdict);
+      setVerdict(res.data.verdict);
+      setTestResult(enriched);
+      setOutputMsg(res.data.verdict);
     } catch (err) { setOutputMsg(err.response?.data || "Error running code"); }
     finally { setIsRunning(false); }
   };
@@ -226,7 +226,6 @@ const CodeEditor = () => {
   );
 
   const diffColor = { easy: "var(--green)", medium: "var(--yellow)", hard: "var(--red)" }[problem.difficulty?.toLowerCase()] || "var(--text-secondary)";
-  const testList = testResult.length ? testResult : (problem.visibleTestCases || []);
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)", fontFamily: "'Inter', sans-serif", overflow: "hidden" }}>
@@ -242,19 +241,19 @@ const CodeEditor = () => {
         background: "var(--bg-secondary)", borderBottom: "1px solid var(--border)",
         padding: "0 1rem", height: "48px", flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", textDecoration: "none", fontSize: "0.82rem" }}
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", minWidth: 0 }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", textDecoration: "none", fontSize: "0.82rem", flexShrink: 0 }}
             onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
             onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary)"}
           >
             <ArrowLeft size={14} /> Problems
           </Link>
           <span style={{ color: "var(--border)" }}>|</span>
-          <span style={{ fontWeight: 600, fontSize: "0.88rem" }}>{problem.title}</span>
-          <span style={{ color: diffColor, fontSize: "0.75rem", fontWeight: 600 }}>{problem.difficulty}</span>
+          <span style={{ fontWeight: 600, fontSize: "0.88rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{problem.title}</span>
+          <span style={{ color: diffColor, fontSize: "0.75rem", fontWeight: 600, flexShrink: 0 }}>{problem.difficulty}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
           <select value={language} onChange={e => setLanguage(e.target.value)} style={{
             background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)",
             borderRadius: "6px", padding: "0.35rem 0.65rem", fontSize: "0.8rem", cursor: "pointer", outline: "none",
@@ -270,46 +269,45 @@ const CodeEditor = () => {
             display: "flex", alignItems: "center", gap: "0.35rem",
             background: "var(--bg-card)", border: "1px solid var(--border)",
             color: "var(--text-primary)", borderRadius: "6px", padding: "0.35rem 0.85rem",
-            fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+            fontSize: "0.8rem", fontWeight: 600, cursor: isRunning || isSubmitting ? "not-allowed" : "pointer",
             opacity: (isRunning || isSubmitting) ? 0.5 : 1,
           }}>
-            <Play size={13} /> Run
+            <Play size={13} /> {isRunning ? "Running…" : "Run"}
           </button>
 
           <button onClick={handleSubmitCode} disabled={isRunning || isSubmitting} style={{
             display: "flex", alignItems: "center", gap: "0.35rem",
             background: "var(--green)", border: "none",
             color: "#fff", borderRadius: "6px", padding: "0.35rem 0.85rem",
-            fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+            fontSize: "0.8rem", fontWeight: 600, cursor: isRunning || isSubmitting ? "not-allowed" : "pointer",
             opacity: (isRunning || isSubmitting) ? 0.5 : 1,
           }}>
-            <Upload size={13} /> Submit
+            <Upload size={13} /> {isSubmitting ? "Submitting…" : "Submit"}
           </button>
         </div>
       </div>
 
-      {/* MAIN SPLIT PANEL */}
+      {/* MAIN SPLIT */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
-        {/* LEFT */}
+        {/* LEFT PANEL */}
         <div style={{
           width: `${leftWidth}%`, flexShrink: 0, overflow: "hidden",
           display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)",
         }}>
-
-          {/* Tab bar: 3 tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          {/* Tabs */}
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--bg-secondary)" }}>
             {[
               { key: "description", label: "Description" },
-              { key: "discussion",  label: "Discussion" },
-              { key: "mynote",      label: "My Note" },
+              { key: "discussion",  label: "Discussion"  },
+              { key: "mynote",      label: "My Note"     },
             ].map(tab => (
               <button key={tab.key} onClick={() => setLeftTab(tab.key)} style={{
                 flex: 1, background: "none", border: "none",
                 borderBottom: leftTab === tab.key ? "2px solid var(--accent)" : "2px solid transparent",
                 color: leftTab === tab.key ? "var(--text-primary)" : "var(--text-secondary)",
                 padding: "0.65rem 0.4rem", fontSize: "0.78rem", fontWeight: 600,
-                cursor: "pointer", whiteSpace: "nowrap",
+                cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s",
               }}>
                 {tab.label}
               </button>
@@ -319,17 +317,19 @@ const CodeEditor = () => {
           {/* Description */}
           {leftTab === "description" && (
             <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
-              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.25rem" }}>{problem.title}</h2>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }}>{problem.title}</h2>
               <p style={{ color: diffColor, fontSize: "0.78rem", fontWeight: 600, marginBottom: "1rem" }}>{problem.difficulty}</p>
-              <p style={{ color: "var(--text-secondary)", lineHeight: 1.7, fontSize: "0.88rem", whiteSpace: "pre-line", marginBottom: "1.5rem" }}>{problem.description}</p>
+              <p style={{ color: "var(--text-secondary)", lineHeight: 1.75, fontSize: "0.88rem", whiteSpace: "pre-line", marginBottom: "1.5rem" }}>{problem.description}</p>
 
-              <h3 style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Examples</h3>
+              <h3 style={{ fontSize: "0.75rem", fontWeight: 700, marginBottom: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Examples</h3>
               {problem.visibleTestCases?.map((tc, i) => (
-                <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.8rem" }}>
-                  <p style={{ color: "var(--text-secondary)", marginBottom: "0.3rem", fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", fontWeight: 600 }}>EXAMPLE {i + 1}</p>
-                  <div style={{ color: "var(--text-secondary)" }}><span style={{ color: "var(--accent-2)" }}>Input</span>   {tc.displayInput || tc.input}</div>
-                  <div style={{ marginTop: "0.3rem", color: "var(--text-secondary)" }}><span style={{ color: "var(--green)" }}>Output</span>  {tc.output}</div>
-                  {tc.explanation && <div style={{ marginTop: "0.4rem", color: "var(--text-secondary)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", fontStyle: "italic" }}>{tc.explanation}</div>}
+                <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem" }}>
+                  <p style={{ color: "var(--text-secondary)", marginBottom: "0.5rem", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Example {i + 1}</p>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.8rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                    <div><span style={{ color: "var(--text-secondary)" }}>Input: </span><span style={{ color: "var(--accent-2)" }}>{tc.displayInput || tc.input}</span></div>
+                    <div><span style={{ color: "var(--text-secondary)" }}>Output: </span><span style={{ color: "var(--green)" }}>{tc.output}</span></div>
+                    {tc.explanation && <div style={{ marginTop: "0.25rem", color: "var(--text-secondary)", fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", fontStyle: "italic" }}>{tc.explanation}</div>}
+                  </div>
                 </div>
               ))}
 
@@ -338,7 +338,7 @@ const CodeEditor = () => {
                   <button onClick={() => setIsTagsOpen(p => !p)} style={{
                     width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
                     background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "8px",
-                    padding: "0.65rem 0.9rem", cursor: "pointer", color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: 600,
+                    padding: "0.6rem 0.85rem", cursor: "pointer", color: "var(--text-primary)", fontSize: "0.82rem", fontWeight: 600,
                   }}>
                     <span>Topics ({problem.tags.length})</span>
                     {isTagsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -355,29 +355,26 @@ const CodeEditor = () => {
             </div>
           )}
 
-          {/* Discussion */}
           {leftTab === "discussion" && <Discussion problemId={id} />}
-
-          {/* My Note */}
-          {leftTab === "mynote" && <MyNote problemId={id} />}
-
+          {leftTab === "mynote"     && <MyNote problemId={id} />}
         </div>
 
-        {/* RIGHT – editor + output */}
+        {/* RIGHT PANEL */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
+          {/* Verdict banner */}
           {verdict && (
             <div style={{
-              padding: "0.5rem 1rem", textAlign: "center", fontWeight: 700, fontSize: "0.85rem",
+              padding: "0.5rem 1rem", textAlign: "center", fontWeight: 700, fontSize: "0.85rem", flexShrink: 0,
               background: verdict === "Accepted" ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)",
               color: verdict === "Accepted" ? "var(--green)" : "var(--red)",
               borderBottom: `1px solid ${verdict === "Accepted" ? "rgba(63,185,80,0.3)" : "rgba(248,81,73,0.3)"}`,
-              flexShrink: 0,
             }}>
               {outputMsg || verdict}
             </div>
           )}
 
+          {/* Monaco editor */}
           <div style={{ flex: 1, minHeight: 0 }}>
             <Editor
               height="100%"
@@ -389,127 +386,133 @@ const CodeEditor = () => {
             />
           </div>
 
-<div style={{ height: "260px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          {/* OUTPUT PANEL */}
+          <div style={{ height: "260px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
 
-  {/* Test case tabs */}
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "38px", flexShrink: 0 }}>
-    <div style={{ display: "flex", gap: "0.35rem", overflowX: "auto" }}>
-      {testList.map((t, i) => {
-        const isActive = i === selectedTestIndex;
-        const isPassed = t.status === "Accepted";
-        const hasFailed = t.status && t.status !== "Accepted";
-        const dotColor = isPassed ? "var(--green)" : hasFailed ? "var(--red)" : "var(--text-secondary)";
-        return (
-          <button key={i} onClick={() => setSelectedTestIndex(i)} style={{
-            display: "flex", alignItems: "center", gap: "0.3rem",
-            background: isActive ? "var(--bg-card)" : "transparent",
-            border: isActive ? "1px solid var(--border)" : "1px solid transparent",
-            borderRadius: "6px", padding: "0.25rem 0.65rem",
-            fontSize: "0.75rem", color: dotColor,
-            cursor: "pointer", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
-          }}>
-            {isPassed ? "✓" : hasFailed ? "✗" : "○"} Case {i + 1}
-          </button>
-        );
-      })}
-    </div>
-
-    {/* Overall verdict summary when results exist */}
-    {testResult.length > 0 && (
-      <span style={{
-        fontSize: "0.72rem", fontWeight: 700, flexShrink: 0,
-        color: testResult.every(t => t.status === "Accepted") ? "var(--green)" : "var(--red)",
-      }}>
-        {testResult.filter(t => t.status === "Accepted").length}/{testResult.length} passed
-      </span>
-    )}
-  </div>
-
-  {/* Test case detail */}
-  <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem 1rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
-    {!testList.length ? (
-      <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>
-    ) : (() => {
-      const t = testList[Math.min(selectedTestIndex, testList.length - 1)];
-      const isPassed = t.status === "Accepted";
-      const hasFailed = t.status && !isPassed;
-
-      // Clean output — trim trailing newline Judge0 adds
-      const cleanOutput = t.output?.replace(/\n$/, "") || null;
-      const cleanExpected = t.expected_output?.replace(/\n$/, "") || null;
-      const inputToShow = t.displayInput || t.input || null;
-
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-
-          {/* Status badge — only after running */}
-          {t.status && (
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: "0.4rem",
-              background: isPassed ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)",
-              color: isPassed ? "var(--green)" : "var(--red)",
-              border: `1px solid ${isPassed ? "rgba(63,185,80,0.3)" : "rgba(248,81,73,0.3)"}`,
-              borderRadius: "20px", padding: "0.2rem 0.75rem",
-              fontSize: "0.72rem", fontWeight: 700, width: "fit-content",
-            }}>
-              {isPassed ? "✓ Accepted" : `✗ ${t.status}`}
-            </div>
-          )}
-
-          {/* Input */}
-          {inputToShow && (
-            <div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Input</div>
-              <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--accent-2)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                {inputToShow}
+            {/* Tab bar */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "38px", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "0.35rem", overflowX: "auto" }}>
+                {!testResult.length
+                  ? problem.visibleTestCases?.map((_, i) => (
+                      <button key={i} onClick={() => setSelectedTestIndex(i)} style={{
+                        background: selectedTestIndex === i ? "var(--bg-card)" : "transparent",
+                        border: selectedTestIndex === i ? "1px solid var(--border)" : "1px solid transparent",
+                        borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem",
+                        color: "var(--text-secondary)", cursor: "pointer",
+                        fontWeight: selectedTestIndex === i ? 600 : 400,
+                      }}>
+                        Case {i + 1}
+                      </button>
+                    ))
+                  : testResult.map((t, i) => {
+                      const isPassed = t.status === "Accepted";
+                      return (
+                        <button key={i} onClick={() => setSelectedTestIndex(i)} style={{
+                          background: selectedTestIndex === i ? "var(--bg-card)" : "transparent",
+                          border: selectedTestIndex === i ? "1px solid var(--border)" : "1px solid transparent",
+                          borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem",
+                          color: isPassed ? "var(--green)" : "var(--red)",
+                          cursor: "pointer", fontWeight: selectedTestIndex === i ? 600 : 400,
+                        }}>
+                          {isPassed ? "✓" : "✗"} Case {i + 1}
+                        </button>
+                      );
+                    })
+                }
               </div>
-            </div>
-          )}
 
-          {/* Expected output */}
-          {cleanExpected && (
-            <div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Expected Output</div>
-              <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--text-primary)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                {cleanExpected}
-              </div>
+              {/* Pass count summary */}
+              {testResult.length > 0 && (
+                <span style={{
+                  fontSize: "0.72rem", fontWeight: 700, flexShrink: 0, marginLeft: "0.5rem",
+                  color: testResult.every(t => t.status === "Accepted") ? "var(--green)" : "var(--red)",
+                }}>
+                  {testResult.filter(t => t.status === "Accepted").length}/{testResult.length} passed
+                </span>
+              )}
             </div>
-          )}
 
-          {/* Your output */}
-          {cleanOutput && (
-            <div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Your Output</div>
-              <div style={{
-                background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem",
-                color: isPassed ? "var(--green)" : hasFailed ? "var(--red)" : "var(--text-primary)",
-                whiteSpace: "pre-wrap", wordBreak: "break-all",
-                border: `1px solid ${isPassed ? "rgba(63,185,80,0.2)" : hasFailed ? "rgba(248,81,73,0.2)" : "transparent"}`,
-              }}>
-                {cleanOutput}
-              </div>
+            {/* Content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0.85rem 1rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
+
+              {/* Before running */}
+              {!testResult.length ? (
+                <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.6rem" }}>
+                  <Play size={22} color="var(--text-secondary)" opacity={0.35} />
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+                    Click <strong style={{ color: "var(--text-primary)" }}>Run</strong> to test against sample cases
+                  </span>
+                </div>
+              ) : (() => {
+                const t = testResult[Math.min(selectedTestIndex, testResult.length - 1)];
+                const isPassed = t.status === "Accepted";
+                const hasFailed = t.status && !isPassed;
+                const cleanOutput   = t.yourOutput?.replace(/\n$/, "") ?? null;
+                const cleanExpected = t.expectedOutput?.replace(/\n$/, "") ?? null;
+                const inputToShow   = t.displayInput || t.input || null;
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+
+                    {/* Status badge */}
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.4rem",
+                      background: isPassed ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)",
+                      color: isPassed ? "var(--green)" : "var(--red)",
+                      border: `1px solid ${isPassed ? "rgba(63,185,80,0.3)" : "rgba(248,81,73,0.3)"}`,
+                      borderRadius: "20px", padding: "0.2rem 0.75rem",
+                      fontSize: "0.72rem", fontWeight: 700, width: "fit-content",
+                    }}>
+                      {isPassed ? "✓ Accepted" : `✗ ${t.status}`}
+                    </div>
+
+                    {/* Input */}
+                    {inputToShow && (
+                      <div>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Input</div>
+                        <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.5rem 0.75rem", color: "var(--accent-2)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                          {inputToShow}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expected output */}
+                    {cleanExpected !== null && (
+                      <div>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Expected Output</div>
+                        <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.5rem 0.75rem", color: "var(--text-primary)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                          {cleanExpected}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Your output */}
+                    <div>
+                      <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Your Output</div>
+                      <div style={{
+                        background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.5rem 0.75rem",
+                        color: isPassed ? "var(--green)" : hasFailed ? "var(--red)" : "var(--text-primary)",
+                        border: `1px solid ${isPassed ? "rgba(63,185,80,0.25)" : hasFailed ? "rgba(248,81,73,0.25)" : "transparent"}`,
+                        whiteSpace: "pre-wrap", wordBreak: "break-all", minHeight: "2rem",
+                      }}>
+                        {cleanOutput ?? <span style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>no output</span>}
+                      </div>
+                    </div>
+
+                    {/* Error */}
+                    {t.error && (
+                      <div>
+                        <div style={{ color: "var(--red)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.3rem" }}>Error</div>
+                        <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: "6px", padding: "0.5rem 0.75rem", color: "var(--red)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                          {t.error}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
-          )}
-
-          {/* Error / compile output */}
-          {t.error && (
-            <div>
-              <div style={{ color: "var(--red)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Error</div>
-              <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--red)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                {t.error}
-              </div>
-            </div>
-          )}
-
-          {/* No output yet — before running */}
-          {!t.status && !cleanOutput && !t.error && (
-            <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>
-          )}
-        </div>
-      );
-    })()}
-  </div>
-</div>
+          </div>
         </div>
       </div>
 
