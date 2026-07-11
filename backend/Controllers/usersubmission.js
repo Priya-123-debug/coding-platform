@@ -203,5 +203,18 @@ const runcode = async (req, res) => {
     res.status(500).send("Internal server error");
   }
 };
+const getSubmissionsByProblem = async (req, res) => {
+  try {
+    const userId = req.result._id;
+    const problemId = req.params.id;
+    const submissions = await Submission.find({ userId, problemId })
+      .sort({ createdAt: -1 })
+      .limit(20);
+    res.status(200).json(submissions);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
 
-module.exports = { submitcode, runcode };
+module.exports = { submitcode, runcode, getSubmissionsByProblem };
+
