@@ -389,45 +389,127 @@ const CodeEditor = () => {
             />
           </div>
 
-          <div style={{ height: "220px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "36px", flexShrink: 0 }}>
-              <div style={{ display: "flex", gap: "0.4rem", overflowX: "auto" }}>
-                {testList.map((t, i) => {
-                  const isActive = i === selectedTestIndex;
-                  const st = t.status;
-                  const color = st === "Accepted" ? "var(--green)" : st ? "var(--red)" : "var(--text-secondary)";
-                  return (
-                    <button key={i} onClick={() => setSelectedTestIndex(i)} style={{
-                      background: isActive ? "var(--bg-card)" : "transparent",
-                      border: isActive ? "1px solid var(--border)" : "1px solid transparent",
-                      borderRadius: "6px", padding: "0.25rem 0.65rem", fontSize: "0.75rem",
-                      color, cursor: "pointer", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
-                    }}>
-                      Case {i + 1} {st === "Accepted" ? "✓" : st ? "✗" : ""}
-                    </button>
-                  );
-                })}
-              </div>
-              <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>Console</span>
-            </div>
+<div style={{ height: "260px", borderTop: "1px solid var(--border)", background: "#0d1117", display: "flex", flexDirection: "column", flexShrink: 0 }}>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
-              {(() => {
-                if (!testList.length) return <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>;
-                const t = testList[Math.min(selectedTestIndex, testList.length - 1)];
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                    {t.displayInput && <div><span style={{ color: "var(--text-secondary)" }}>Input: </span><span style={{ color: "var(--accent-2)" }}>{t.displayInput}</span></div>}
-                    {t.expected_output && <div><span style={{ color: "var(--text-secondary)" }}>Expected: </span><span style={{ color: "var(--text-primary)" }}>{t.expected_output}</span></div>}
-                    {t.output && <div><span style={{ color: "var(--text-secondary)" }}>Output: </span><span style={{ color: t.status === "Accepted" ? "var(--green)" : "var(--red)" }}>{t.output}</span></div>}
-                    {t.error && <div><span style={{ color: "var(--text-secondary)" }}>Error: </span><span style={{ color: "var(--red)" }}>{t.error}</span></div>}
-                    {t.explanation && <div style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>{t.explanation}</div>}
-                    {!t.displayInput && !t.output && !t.error && <span style={{ color: "var(--text-secondary)" }}>No output yet.</span>}
-                  </div>
-                );
-              })()}
+  {/* Test case tabs */}
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.75rem", borderBottom: "1px solid var(--border)", height: "38px", flexShrink: 0 }}>
+    <div style={{ display: "flex", gap: "0.35rem", overflowX: "auto" }}>
+      {testList.map((t, i) => {
+        const isActive = i === selectedTestIndex;
+        const isPassed = t.status === "Accepted";
+        const hasFailed = t.status && t.status !== "Accepted";
+        const dotColor = isPassed ? "var(--green)" : hasFailed ? "var(--red)" : "var(--text-secondary)";
+        return (
+          <button key={i} onClick={() => setSelectedTestIndex(i)} style={{
+            display: "flex", alignItems: "center", gap: "0.3rem",
+            background: isActive ? "var(--bg-card)" : "transparent",
+            border: isActive ? "1px solid var(--border)" : "1px solid transparent",
+            borderRadius: "6px", padding: "0.25rem 0.65rem",
+            fontSize: "0.75rem", color: dotColor,
+            cursor: "pointer", fontWeight: isActive ? 600 : 400, whiteSpace: "nowrap",
+          }}>
+            {isPassed ? "✓" : hasFailed ? "✗" : "○"} Case {i + 1}
+          </button>
+        );
+      })}
+    </div>
+
+    {/* Overall verdict summary when results exist */}
+    {testResult.length > 0 && (
+      <span style={{
+        fontSize: "0.72rem", fontWeight: 700, flexShrink: 0,
+        color: testResult.every(t => t.status === "Accepted") ? "var(--green)" : "var(--red)",
+      }}>
+        {testResult.filter(t => t.status === "Accepted").length}/{testResult.length} passed
+      </span>
+    )}
+  </div>
+
+  {/* Test case detail */}
+  <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem 1rem", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.78rem" }}>
+    {!testList.length ? (
+      <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>
+    ) : (() => {
+      const t = testList[Math.min(selectedTestIndex, testList.length - 1)];
+      const isPassed = t.status === "Accepted";
+      const hasFailed = t.status && !isPassed;
+
+      // Clean output — trim trailing newline Judge0 adds
+      const cleanOutput = t.output?.replace(/\n$/, "") || null;
+      const cleanExpected = t.expected_output?.replace(/\n$/, "") || null;
+      const inputToShow = t.displayInput || t.input || null;
+
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+
+          {/* Status badge — only after running */}
+          {t.status && (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "0.4rem",
+              background: isPassed ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)",
+              color: isPassed ? "var(--green)" : "var(--red)",
+              border: `1px solid ${isPassed ? "rgba(63,185,80,0.3)" : "rgba(248,81,73,0.3)"}`,
+              borderRadius: "20px", padding: "0.2rem 0.75rem",
+              fontSize: "0.72rem", fontWeight: 700, width: "fit-content",
+            }}>
+              {isPassed ? "✓ Accepted" : `✗ ${t.status}`}
             </div>
-          </div>
+          )}
+
+          {/* Input */}
+          {inputToShow && (
+            <div>
+              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Input</div>
+              <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--accent-2)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {inputToShow}
+              </div>
+            </div>
+          )}
+
+          {/* Expected output */}
+          {cleanExpected && (
+            <div>
+              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Expected Output</div>
+              <div style={{ background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--text-primary)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {cleanExpected}
+              </div>
+            </div>
+          )}
+
+          {/* Your output */}
+          {cleanOutput && (
+            <div>
+              <div style={{ color: "var(--text-secondary)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Your Output</div>
+              <div style={{
+                background: "var(--bg-secondary)", borderRadius: "6px", padding: "0.45rem 0.65rem",
+                color: isPassed ? "var(--green)" : hasFailed ? "var(--red)" : "var(--text-primary)",
+                whiteSpace: "pre-wrap", wordBreak: "break-all",
+                border: `1px solid ${isPassed ? "rgba(63,185,80,0.2)" : hasFailed ? "rgba(248,81,73,0.2)" : "transparent"}`,
+              }}>
+                {cleanOutput}
+              </div>
+            </div>
+          )}
+
+          {/* Error / compile output */}
+          {t.error && (
+            <div>
+              <div style={{ color: "var(--red)", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.2rem" }}>Error</div>
+              <div style={{ background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.2)", borderRadius: "6px", padding: "0.45rem 0.65rem", color: "var(--red)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {t.error}
+              </div>
+            </div>
+          )}
+
+          {/* No output yet — before running */}
+          {!t.status && !cleanOutput && !t.error && (
+            <span style={{ color: "var(--text-secondary)" }}>Run your code to see results.</span>
+          )}
+        </div>
+      );
+    })()}
+  </div>
+</div>
         </div>
       </div>
 
