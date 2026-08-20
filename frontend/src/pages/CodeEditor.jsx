@@ -293,29 +293,52 @@ const [aiError, setAiError] = useState("");
 
 const handleSubmitCode = async () => {
   try {
-    setIsSubmitting(true); setVerdict(""); setTestResult([]); setOutputMsg("Submitting…");
-    setAiExplanation(""); setAiError(""); setLastSubmissionId(null);   // ← new
+    setIsSubmitting(true);
+    setVerdict("");
+    setTestResult([]);
+    setOutputMsg("Submitting…");
+    setAiExplanation("");
+    setAiError("");
+    setLastSubmissionId(null);
+
     const res = await axiosClient.post(`/submission/submit/${id}`, { language, code });
     const sub = res.data;
     const status = sub.status || "Submitted";
     const msg = status === "Accepted"
       ? `Accepted — ${sub.testCasepassed ?? 0}/${sub.testCasetotal ?? 0} hidden tests passed`
-      : sub.errormessage || status;
-    setVerdict(status); setOutputMsg(msg);
-    setLastSubmissionId(sub._id);   // ← new
-  } catch (err) { setVerdict("Error"); setOutputMsg(err.response?.data || "Error submitting"); }
-  finally { setIsSubmitting(false); }
-};
+      : sub.errormessage || sub.errorMessage || status;
 
+    setVerdict(status);
+    setOutputMsg(msg);
+    setLastSubmissionId(sub._id || sub.id);
+  } catch (err) {
+    setVerdict("Error");
+    setOutputMsg(err.response?.data?.message || err.response?.data || "Error submitting code");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 const handleAskAI = async () => {
   if (!lastSubmissionId) return;
+
   try {
-    setIsAiLoading(true); setAiError(""); setAiExplanation("");
-    const res = await axiosClient.post(`/ai/explain/${lastSubmissionId}`);
-    setAiExplanation(res.data.explanation);
+    setIsAiLoading(true);
+    setAiError("");
+    setAiExplanation("");
+
+    // Pass an empty object as the second parameter for Axios POST
+    const res = await axiosClient.post(`/ai/explain/${lastSubmissionId}`, {});
+    
+    if (res.data?.explanation) {
+      setAiExplanation(res.data.explanation);
+    } else {
+      setAiError("Received an empty explanation from the assistant.");
+    }
   } catch (err) {
-    setAiError(err.response?.data?.message || "AI assistant failed to respond");
+    // Check nested backend error property returned by backend controller
+    const serverError = err.response?.data?.error || err.response?.data?.message;
+    setAiError(serverError || "AI assistant failed to respond");
   } finally {
     setIsAiLoading(false);
   }
