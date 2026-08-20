@@ -56,7 +56,19 @@ const submissionSchema = new Schema(
       type: Number,
       default: 0,
     },
+
+
+     aiExplanation: {
+  type: String,
+  default: "",
+},
+
+
+
+
   },
+
+ 
   {
     timestamps: true,
   }

@@ -27,6 +27,7 @@ const MyNote = ({ problemId }) => {
   const [saved, setSaved] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+
   useEffect(() => {
     axiosClient.get(`/mistake/${problemId}`)
       .then(({ data }) => { if (data) { setNote(data.note); setSavedNote(data); } })
@@ -212,10 +213,18 @@ const CodeEditor = () => {
   const [outputMsg, setOutputMsg] = useState("");
   const [leftTab, setLeftTab] = useState("description");
 
+
   // ── Draggable divider ──
   const [leftWidth, setLeftWidth] = useState(40); // percent
   const isDragging = useRef(false);
   const containerRef = useRef(null);
+
+
+  // AI Assistant state
+const [lastSubmissionId, setLastSubmissionId] = useState(null);
+const [aiExplanation, setAiExplanation] = useState("");
+const [isAiLoading, setIsAiLoading] = useState(false);
+const [aiError, setAiError] = useState("");
 
   const onMouseDown = useCallback(() => {
     isDragging.current = true;
@@ -282,19 +291,35 @@ const CodeEditor = () => {
     finally { setIsRunning(false); }
   };
 
-  const handleSubmitCode = async () => {
-    try {
-      setIsSubmitting(true); setVerdict(""); setTestResult([]); setOutputMsg("Submitting…");
-      const res = await axiosClient.post(`/submission/submit/${id}`, { language, code });
-      const sub = res.data;
-      const status = sub.status || "Submitted";
-      const msg = status === "Accepted"
-        ? `Accepted — ${sub.testCasepassed ?? 0}/${sub.testCasetotal ?? 0} hidden tests passed`
-        : sub.errormessage || status;
-      setVerdict(status); setOutputMsg(msg);
-    } catch (err) { setVerdict("Error"); setOutputMsg(err.response?.data || "Error submitting"); }
-    finally { setIsSubmitting(false); }
-  };
+const handleSubmitCode = async () => {
+  try {
+    setIsSubmitting(true); setVerdict(""); setTestResult([]); setOutputMsg("Submitting…");
+    setAiExplanation(""); setAiError(""); setLastSubmissionId(null);   // ← new
+    const res = await axiosClient.post(`/submission/submit/${id}`, { language, code });
+    const sub = res.data;
+    const status = sub.status || "Submitted";
+    const msg = status === "Accepted"
+      ? `Accepted — ${sub.testCasepassed ?? 0}/${sub.testCasetotal ?? 0} hidden tests passed`
+      : sub.errormessage || status;
+    setVerdict(status); setOutputMsg(msg);
+    setLastSubmissionId(sub._id);   // ← new
+  } catch (err) { setVerdict("Error"); setOutputMsg(err.response?.data || "Error submitting"); }
+  finally { setIsSubmitting(false); }
+};
+
+
+const handleAskAI = async () => {
+  if (!lastSubmissionId) return;
+  try {
+    setIsAiLoading(true); setAiError(""); setAiExplanation("");
+    const res = await axiosClient.post(`/ai/explain/${lastSubmissionId}`);
+    setAiExplanation(res.data.explanation);
+  } catch (err) {
+    setAiError(err.response?.data?.message || "AI assistant failed to respond");
+  } finally {
+    setIsAiLoading(false);
+  }
+};
 
   const handleLoadCode = (loadedCode, loadedLang) => {
     setCode(loadedCode);
@@ -438,6 +463,64 @@ const CodeEditor = () => {
               {outputMsg || verdict}
             </div>
           )}
+
+
+{/* AI Assistant — only offered when the submission failed */}
+{verdict && verdict !== "Accepted" && lastSubmissionId && (
+  <div style={{ padding: "0.6rem 1rem", flexShrink: 0, borderBottom: "1px solid var(--border, #30363d)" }}>
+    {!aiExplanation && (
+      <button
+        onClick={handleAskAI}
+        disabled={isAiLoading}
+        style={{
+          display: "flex", alignItems: "center", gap: "0.35rem",
+          background: "var(--purple, #7f77dd)", border: "none", color: "#fff",
+          borderRadius: "6px", padding: "0.35rem 0.85rem", fontSize: "0.8rem",
+          fontWeight: 600, cursor: isAiLoading ? "not-allowed" : "pointer",
+          opacity: isAiLoading ? 0.6 : 1,
+        }}
+      >
+        {isAiLoading ? "Thinking…" : "🤖 Ask AI why this failed"}
+      </button>
+    )}
+
+    {aiError && (
+      <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "var(--red)" }}>
+        {aiError}
+      </div>
+    )}
+
+    {aiExplanation && (
+      <div style={{
+        marginTop: "0.5rem", fontSize: "0.82rem", lineHeight: 1.6,
+        background: "rgba(127,119,221,0.08)", border: "1px solid rgba(127,119,221,0.25)",
+        borderRadius: "8px", padding: "0.75rem 0.9rem", whiteSpace: "pre-wrap",
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: "0.35rem", color: "var(--purple, #7f77dd)" }}>
+          AI Assistant
+        </div>
+        {aiExplanation}
+      </div>
+    )}
+  </div>
+)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           {/* Monaco */}
           <div style={{ flex: 1, minHeight: 0 }}>

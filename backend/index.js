@@ -12,6 +12,7 @@ const submitrouter = require("./routes/submit");
 const commentRouter = require("./routes/comment");
 const analyticsRouter=require("./routes/analytics");
 const mistakeRouter = require("./routes/mistake");
+const airouter = require("./routes/ai");
 const cors = require("cors");
 
 const allowedOrigins = [
@@ -48,6 +49,7 @@ app.use("/problem", problemrouter);
 app.use("/submission", submitrouter);
 app.use("/analytics", analyticsRouter);
 app.use("/mistake", mistakeRouter);
+app.use("/ai", airouter);
 const main = require("./utilis/db");
 // for make server active
 app.get("/health", (req, res) => {
