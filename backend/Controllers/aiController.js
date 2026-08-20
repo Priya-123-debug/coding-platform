@@ -25,20 +25,18 @@ Explain the likely cause of failure and a hint to fix it. Keep it under 200 word
 `.trim();
 };
 
-// The actual LLM call is isolated in one function on purpose:
-// if you ever swap providers (OpenAI -> Anthropic) or move this into
-// a queue worker later, this is the only function that needs to change.
+// Isolated Groq API call using OpenAI-compatible HTTP endpoint
 const callLLM = async (prompt) => {
   const response = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
+    "https://api.groq.com/openai/v1/chat/completions",
     {
-      model: "gpt-4o-mini",
+      model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
     },
     {
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
     }
